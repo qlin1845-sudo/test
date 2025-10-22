@@ -285,5 +285,213 @@ public class AlgorithmFactoryTest {
         } catch (AlgorithmNotFoundException e) {
             assertEquals("异常消息应匹配", "Algorithm not found: nonexistent", e.getMessage());
         }
+
+    // =================================================================
+    // New DataStructure Tests
+    // =================================================================
+
+    /**
+     * 测试 BSTDataStructure 的功能。
+     */
+    @Test
+    public void testBSTDataStructure() {
+        DataStructure bst = new BSTDataStructure();
+        bst.fromArray(new int[]{5, 3, 7, 1, 4, 6, 8});
+        assertEquals("BST 大小应为 7", 7, bst.size());
+        assertArrayEquals("toArray 应返回中序遍历结果", new int[]{1, 3, 4, 5, 6, 7, 8}, bst.toArray());
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testBSTDataStructureGet() {
+        new BSTDataStructure().get(0);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testBSTDataStructureSet() {
+        new BSTDataStructure().set(0, 1);
+    }
+    
+    /**
+     * 测试 HashTableDataStructure 的功能。
+     */
+    @Test
+    public void testHashTableDataStructure() {
+        DataStructure ht = new HashTableDataStructure();
+        ht.fromArray(new int[]{10, 20, 30});
+        assertEquals("哈希表大小应为 3", 3, ht.size());
+        ht.add(40);
+        assertEquals("添加后大小应为 4", 4, ht.size());
+        assertEquals("索引 1 的值应为 20", 20, ht.get(1));
+        ht.set(1, 25);
+        assertEquals("设置后索引 1 的值应为 25", 25, ht.get(1));
+    }
+
+    /**
+     * 测试 HeapDataStructure 的功能。
+     */
+    @Test
+    public void testHeapDataStructure() {
+        DataStructure heap = new HeapDataStructure();
+        heap.fromArray(new int[]{5, 1, 9});
+        assertEquals("堆大小应为 3", 3, heap.size());
+        heap.add(0);
+        assertEquals("添加后大小应为 4", 4, heap.size());
+        // toArray 不保证顺序，因此只检查大小
+    }
+    
+    @Test(expected = UnsupportedOperationException.class)
+    public void testHeapDataStructureGet() {
+        new HeapDataStructure().get(0);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testHeapDataStructureSet() {
+        new HeapDataStructure().set(0, 1);
+    }
+    
+    /**
+     * 测试 LinkedListDataStructure 的功能。
+     */
+    @Test
+    public void testLinkedListDataStructure() {
+        DataStructure ll = new LinkedListDataStructure();
+        ll.fromArray(new int[]{1, 2, 3});
+        assertEquals("链表大小应为 3", 3, ll.size());
+        assertEquals("索引 1 的值应为 2", 2, ll.get(1));
+        ll.set(1, 5);
+        assertEquals("设置后索引 1 的值应为 5", 5, ll.get(1));
+        assertArrayEquals(new int[]{1, 5, 3}, ll.toArray());
+    }
+    
+    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    public void testLinkedListDataStructureGetOutOfBounds() {
+        DataStructure ll = new LinkedListDataStructure();
+        ll.add(1);
+        ll.get(1);
+    }
+
+    @Test(expected = ArrayIndexOutOfBoundsException.class)
+    public void testLinkedListDataStructureSetOutOfBounds() {
+        DataStructure ll = new LinkedListDataStructure();
+        ll.add(1);
+        ll.set(1, 2);
+    }
+
+    // =================================================================
+    // AlgorithmManager Tests
+    // =================================================================
+
+    @Test
+    public void testAlgorithmManager() throws Exception {
+        AlgorithmManager manager = new AlgorithmManager();
+        manager.addAlgorithm(new QuickSort());
+        assertNotNull("应能获取 Quick Sort 算法", manager.getAlgorithm("Quick Sort"));
+        
+        DataStructure data = new ArrayDataStructure(5);
+        data.fromArray(new int[]{5, 1, 4, 2, 3});
+        manager.sortData("Quick Sort", data);
+        assertArrayEquals(new int[]{1, 2, 3, 4, 5}, data.toArray());
+        
+        assertEquals(2, manager.searchData("Quick Sort", data, 3));
+    }
+    
+    @Test(expected = AlgorithmNotFoundException.class)
+    public void testAlgorithmManagerSortNotFound() throws Exception {
+        new AlgorithmManager().sortData("nonexistent", new ArrayDataStructure(1));
+    }
+    
+    @Test(expected = AlgorithmNotFoundException.class)
+    public void testAlgorithmManagerSearchNotFound() throws Exception {
+        new AlgorithmManager().searchData("nonexistent", new ArrayDataStructure(1), 1);
+    }
+
+    // =================================================================
+    // ConcurrentAlgorithmManager Tests
+    // =================================================================
+
+    @Test
+    public void testConcurrentAlgorithmManager() throws Exception {
+        ConcurrentAlgorithmManager manager = new ConcurrentAlgorithmManager(2);
+        manager.addAlgorithm(new BubbleSort());
+        
+        DataStructure data = new ArrayDataStructure(5);
+        data.fromArray(new int[]{5, 1, 4, 2, 3});
+
+        Future<AlgorithmPerformance> perfFuture = manager.parallelSort("Bubble Sort", data);
+        assertNotNull(perfFuture.get());
+        
+        Future<Integer> searchFuture = manager.parallelSearch("Bubble Sort", data, 4);
+        assertEquals(Integer.valueOf(3), searchFuture.get());
+
+        manager.shutdown();
+    }
+
+    // =================================================================
+    // DynamicAlgorithmManager Tests
+    // =================================================================
+
+    @Test
+    public void testDynamicAlgorithmManager() throws Exception {
+        DynamicAlgorithmManager manager = new DynamicAlgorithmManager(new PerformanceTracker());
+        
+        // 测试选择逻辑
+        DataStructure smallData = new ArrayDataStructure(5);
+        smallData.fromArray(new int[]{5, 1, 4, 2, 3});
+        assertEquals("OptimizedQuickSort", manager.selectOptimalAlgorithm(smallData));
+        
+        DataStructure largeData = new ArrayDataStructure(1001);
+        for(int i = 1000; i >= 0; i--) largeData.add(i);
+        assertEquals("ParallelMergeSort", manager.selectOptimalAlgorithm(largeData));
+
+        DataStructure sortedData = new ArrayDataStructure(5);
+        sortedData.fromArray(new int[]{1, 2, 3, 4, 5});
+        assertEquals("InsertionSort", manager.selectOptimalAlgorithm(sortedData));
+    }
+
+    // =================================================================
+    // QuickSort (non-optimized) Tests
+    // =================================================================
+
+    @Test
+    public void testQuickSort() {
+        QuickSort sorter = new QuickSort();
+        DataStructure data = new ArrayDataStructure(10);
+        data.fromArray(new int[]{5, 1, 9, 3, 7, 4, 8, 6, 2});
+        sorter.sort(data);
+        assertArrayEquals("数组应按升序排序", new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9}, data.toArray());
+        assertEquals("Quick Sort", sorter.getName());
+    }
+
+    // =================================================================
+    // MultiThreadedSearch Tests
+    // =================================================================
+
+    @Test
+    public void testMultiThreadedSearch() throws Exception {
+        MultiThreadedSearch searcher = new MultiThreadedSearch(4);
+        int[] array = {1, 5, 9, 13, 17, 2, 6, 10, 14, 18, 3, 7, 11, 15, 19, 4, 8, 12, 16, 20};
+        
+        assertEquals(10, searcher.parallelSearch(array, 3));
+        assertEquals(-1, searcher.parallelSearch(array, 100));
+        
+        searcher.shutdown();
+    }
+
+    // =================================================================
+    // PerformanceTracker Tests
+    // =================================================================
+
+    @Test
+    public void testPerformanceTracker() {
+        PerformanceTracker tracker = new PerformanceTracker();
+        AlgorithmPerformance p1 = new AlgorithmPerformance(100, 0, 0, 0, 1);
+        AlgorithmPerformance p2 = new AlgorithmPerformance(50, 0, 0, 0, 1);
+        
+        tracker.trackPerformance("slow", p1);
+        tracker.trackPerformance("fast", p2);
+        
+        assertEquals(p2, tracker.getBestPerformance());
+        // 调用 report 仅为覆盖率
+        tracker.generateReport();
     }
 }
