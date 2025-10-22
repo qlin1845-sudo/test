@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MultiThreadedSearch.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SortFactory</a> &gt; <a href="index.source.html" class="el_package">net.mooctest</a> &gt; <span class="el_source">MultiThreadedSearch.java</span></div><h1>MultiThreadedSearch.java</h1><pre class="source lang-java linenums">package net.mooctest;
+
+import java.util.concurrent.*;
+
+public class MultiThreadedSearch {
+    private ThreadPoolExecutor executor;
+
+<span class="fc" id="L8">    public MultiThreadedSearch(int threadCount) {</span>
+        // Use ThreadPoolExecutor instead of ExecutorService
+<span class="fc" id="L10">        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(threadCount);</span>
+<span class="fc" id="L11">    }</span>
+
+    public int parallelSearch(int[] data, int target) throws InterruptedException, ExecutionException {
+<span class="fc" id="L14">        int partitionSize = data.length / executor.getPoolSize(); // Fixed to getPoolSize() to obtain thread pool size</span>
+<span class="fc" id="L15">        Future&lt;Integer&gt;[] futures = new Future[executor.getPoolSize()];</span>
+
+<span class="fc bfc" id="L17" title="All 2 branches covered.">        for (int i = 0; i &lt; executor.getPoolSize(); i++) {</span>
+<span class="fc" id="L18">            final int start = i * partitionSize;</span>
+<span class="fc bfc" id="L19" title="All 2 branches covered.">            final int end = (i == executor.getPoolSize() - 1) ? data.length : start + partitionSize;</span>
+<span class="fc" id="L20">            futures[i] = executor.submit(() -&gt; linearSearch(data, target, start, end));</span>
+        }
+
+        // Check the results of each partition
+<span class="fc bfc" id="L24" title="All 2 branches covered.">        for (Future&lt;Integer&gt; future : futures) {</span>
+<span class="fc" id="L25">            int result = future.get();</span>
+<span class="fc bfc" id="L26" title="All 2 branches covered.">            if (result != -1) {</span>
+<span class="fc" id="L27">                return result;</span>
+            }
+        }
+<span class="fc" id="L30">        return -1; // If all partitions cannot find the target, return -1</span>
+    }
+
+    public int linearSearch(int[] data, int target, int start, int end) {
+<span class="fc bfc" id="L34" title="All 2 branches covered.">        for (int i = start; i &lt; end; i++) {</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">            if (data[i] == target) {</span>
+<span class="fc" id="L36">                return i;</span>
+            }
+        }
+<span class="fc" id="L39">        return -1;</span>
+    }
+
+    public void shutdown() {
+<span class="fc" id="L43">        executor.shutdown(); // Normal shutdown of thread pool</span>
+<span class="fc" id="L44">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

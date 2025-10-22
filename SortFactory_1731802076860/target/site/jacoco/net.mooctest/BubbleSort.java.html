@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BubbleSort.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SortFactory</a> &gt; <a href="index.source.html" class="el_package">net.mooctest</a> &gt; <span class="el_source">BubbleSort.java</span></div><h1>BubbleSort.java</h1><pre class="source lang-java linenums">package net.mooctest;
+
+<span class="fc" id="L3">public class BubbleSort implements Algorithm {</span>
+<span class="fc" id="L4">    private int comparisons = 0;</span>
+<span class="fc" id="L5">    private int swaps = 0;</span>
+
+    @Override
+    public void sort(DataStructure data) {
+<span class="fc" id="L9">        comparisons = 0;</span>
+<span class="fc" id="L10">        swaps = 0;</span>
+<span class="fc bfc" id="L11" title="All 2 branches covered.">        for (int i = 0; i &lt; data.size() - 1; i++) {</span>
+<span class="fc bfc" id="L12" title="All 2 branches covered.">            for (int j = 0; j &lt; data.size() - i - 1; j++) {</span>
+<span class="fc" id="L13">                comparisons++;</span>
+<span class="pc bpc" id="L14" title="1 of 2 branches missed.">                if (data.get(j) &gt; data.get(j + 1)) {</span>
+<span class="fc" id="L15">                    swaps++;</span>
+<span class="fc" id="L16">                    swap(data, j, j + 1);</span>
+                }
+            }
+        }
+<span class="fc" id="L20">    }</span>
+
+    public void swap(DataStructure data, int i, int j) {
+<span class="fc" id="L23">        int temp = data.get(i);</span>
+<span class="fc" id="L24">        data.set(i, data.get(j));</span>
+<span class="fc" id="L25">        data.set(j, temp);</span>
+<span class="fc" id="L26">    }</span>
+
+    @Override
+    public int search(DataStructure data, int target) {
+<span class="fc bfc" id="L30" title="All 2 branches covered.">        for (int i = 0; i &lt; data.size(); i++) {</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">            if (data.get(i) == target) {</span>
+<span class="fc" id="L32">                return i;</span>
+            }
+        }
+<span class="fc" id="L35">        return -1;</span>
+    }
+
+    @Override
+    public String getName() {
+<span class="fc" id="L40">        return &quot;Bubble Sort&quot;;</span>
+    }
+
+    @Override
+    public AlgorithmPerformance evaluatePerformance(DataStructure data) {
+<span class="fc" id="L45">        long startTime = System.nanoTime();</span>
+<span class="fc" id="L46">        sort(data);</span>
+<span class="fc" id="L47">        long endTime = System.nanoTime();</span>
+<span class="fc" id="L48">        long memoryUsed = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();</span>
+<span class="fc" id="L49">        return new AlgorithmPerformance(endTime - startTime, comparisons, swaps, memoryUsed, 1);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
