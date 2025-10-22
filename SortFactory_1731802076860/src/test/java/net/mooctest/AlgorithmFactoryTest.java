@@ -108,7 +108,7 @@ public class AlgorithmFactoryTest {
         data.fromArray(new int[]{5, 1, 9, 3, 7, 4, 8, 6, 2});
         AlgorithmPerformance performance = sorter.evaluatePerformance(data);
         assertNotNull("性能评估结果不应为 null", performance);
-        assertTrue("执行时间应为正数", performance.getTime() >= 0);
+        assertTrue("执行时间应为正数", performance.getTimeTaken() >= 0);
     }
 
 
@@ -151,7 +151,7 @@ public class AlgorithmFactoryTest {
         data.fromArray(new int[]{5, 1, 9, 3, 7, 4, 8, 6, 2});
         AlgorithmPerformance performance = sorter.evaluatePerformance(data);
         assertNotNull("性能评估结果不应为 null", performance);
-        assertTrue("执行时间应为正数", performance.getTime() >= 0);
+        assertTrue("执行时间应为正数", performance.getTimeTaken() >= 0);
     }
 
     // =================================================================
@@ -206,7 +206,7 @@ public class AlgorithmFactoryTest {
         data.fromArray(new int[]{5, 1, 9, 3, 7, 4, 8, 6, 2});
         AlgorithmPerformance performance = sorter.evaluatePerformance(data);
         assertNotNull("性能评估结果不应为 null", performance);
-        assertTrue("执行时间应为正数", performance.getTime() >= 0);
+        assertTrue("执行时间应为正数", performance.getTimeTaken() >= 0);
     }
 
 
