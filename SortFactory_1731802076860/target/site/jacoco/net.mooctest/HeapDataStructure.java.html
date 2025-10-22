@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HeapDataStructure.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SortFactory</a> &gt; <a href="index.source.html" class="el_package">net.mooctest</a> &gt; <span class="el_source">HeapDataStructure.java</span></div><h1>HeapDataStructure.java</h1><pre class="source lang-java linenums">package net.mooctest;
+
+import java.util.PriorityQueue;
+
+public class HeapDataStructure implements DataStructure {
+    private PriorityQueue&lt;Integer&gt; heap;
+
+<span class="fc" id="L8">    public HeapDataStructure() {</span>
+<span class="fc" id="L9">        heap = new PriorityQueue&lt;&gt;(); // Default minimum heap</span>
+<span class="fc" id="L10">    }</span>
+
+    @Override
+    public int[] toArray() {
+<span class="fc" id="L14">        Object[] tempArray = heap.toArray();</span>
+<span class="fc" id="L15">        int[] result = new int[tempArray.length];</span>
+<span class="fc bfc" id="L16" title="All 2 branches covered.">        for (int i = 0; i &lt; tempArray.length; i++) {</span>
+<span class="fc" id="L17">            result[i] = (int) tempArray[i];</span>
+        }
+<span class="fc" id="L19">        return result;</span>
+    }
+
+    @Override
+    public void fromArray(int[] data) {
+<span class="fc" id="L24">        heap.clear();</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">        for (int value : data) {</span>
+<span class="fc" id="L26">            heap.add(value);</span>
+        }
+<span class="fc" id="L28">    }</span>
+
+    @Override
+    public int size() {
+<span class="fc" id="L32">        return heap.size();</span>
+    }
+
+    @Override
+    public void add(int value) {
+<span class="fc" id="L37">        heap.add(value);</span>
+<span class="fc" id="L38">    }</span>
+
+    @Override
+    public int get(int index) {
+<span class="fc" id="L42">        throw new UnsupportedOperationException(&quot;Heap does not support random access&quot;);</span>
+    }
+
+    @Override
+    public void set(int index, int value) {
+<span class="fc" id="L47">        throw new UnsupportedOperationException(&quot;Heap does not support setting specific elements&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
