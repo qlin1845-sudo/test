@@ -12,6 +12,15 @@ public class AStarTest {
         return new Grid(width, height);
     }
 
+    private int[][] pathToArray(Path path) {
+        int[][] coordinates = new int[path.size()][2];
+        for (int i = 0; i < path.size(); i++) {
+            long point = path.get(i);
+            coordinates[i][0] = Point.getX(point);
+            coordinates[i][1] = Point.getY(point);
+        }
+        return coordinates;
+    }
 
     /**
      * 中文说明：验证没有障碍时A*能够生成包含起点终点的直线路径。
@@ -494,6 +503,171 @@ public class AStarTest {
         astar.clear();
         assertTrue(astar.nodes.isClean());
         assertNull(astar.nodes.map);
+        assertTrue(grid.isClean());
+    }
+
+    /**
+     * 中文说明：验证当可行走区域被完全阻隔时A*会穷尽搜索并返回空路径。
+     */
+    @Test
+    public void testSearchUnreachableBarrierReturnsEmpty() {
+        AStar astar = new AStar();
+        Grid grid = createGrid(5, 3);
+        for (int x = 0; x < grid.getWidth(); x++) {
+            grid.setWalkable(x, 1, false);
+        }
+        Path path = new Path();
+
+        astar.search(0, 0, 4, 2, grid, path, false);
+
+        assertTrue("阻隔导致无法到达时路径应为空", path.isEmpty());
+        assertTrue(astar.isCLean(grid));
+    }
+
+    /**
+     * 中文说明：验证存在障碍时路径会包含转折点。
+     */
+    @Test
+    public void testSearchObstacleForcesTurnContainsPivot() {
+        AStar astar = new AStar();
+        Grid grid = createGrid(5, 5);
+        grid.setWalkable(1, 0, false);
+        grid.setWalkable(1, 1, false);
+        Path path = new Path();
+
+        astar.search(0, 0, 2, 2, grid, path, false);
+
+        assertFalse("存在可行走路径时不应为空", path.isEmpty());
+        assertTrue("路径应包含至少一个转折点", path.size() >= 3);
+
+        boolean hasPivot = false;
+        for (int[] coord : pathToArray(path)) {
+            if (!((coord[0] == 0 && coord[1] == 0) || (coord[0] == 2 && coord[1] == 2))) {
+                hasPivot = true;
+            }
+        }
+        assertTrue("路径应包含转折点", hasPivot);
+        assertTrue(astar.isCLean(grid));
+    }
+
+    /**
+     * 中文说明：验证内部异常发生时路径会被清空并重新抛出。
+     */
+    @Test
+    public void testSearchExceptionClearsPathAndRethrows() {
+        AStar astar = new AStar();
+        Path path = new Path();
+        Grid grid = new Grid(3, 3) {
+            boolean thrown;
+
+            @Override
+            void nodeParentDirectionUpdate(int x, int y, int d) {
+                super.nodeParentDirectionUpdate(x, y, d);
+                if (!thrown) {
+                    thrown = true;
+                    throw new RuntimeException("模拟异常");
+                }
+            }
+        };
+
+        try {
+            astar.search(0, 0, 2, 2, grid, path, false);
+            fail("触发异常后应重新抛出");
+        } catch (RuntimeException expected) {
+            assertTrue("异常后路径应被清空", path.isEmpty());
+        }
+        assertTrue(astar.isCLean(grid));
+    }
+
+    /**
+     * 中文说明：验证对角线移动因围栏阻止时返回上一安全点。
+     */
+    @Test
+    public void testReachabilityDiagonalInterruptedByFence() {
+        Grid grid = createGrid(5, 5);
+        Fence fence = (x1, y1, x2, y2) -> x2 + y2 < 2;
+
+        long result = Reachability.getClosestWalkablePointToTarget(0, 0, 4, 3, 1, grid, fence);
+
+        assertEquals("围栏阻止后应退回安全点", Point.toPoint(0, 0), result);
+    }
+
+    /**
+     * 中文说明：验证斜线行进时相邻格阻挡会终止前进。
+     */
+    @Test
+    public void testReachabilityDiagonalBreaksWhenAdjacentCellBlocked() {
+        Grid grid = createGrid(5, 5);
+        grid.setWalkable(1, 0, false);
+
+        long result = Reachability.getClosestWalkablePointToTarget(0, 0, 3, 2, grid);
+
+        assertEquals("相邻格阻挡时应停留在起点", Point.toPoint(0, 0), result);
+    }
+
+    /**
+     * 中文说明：验证格子越界时会被视为不可行走。
+     */
+    @Test
+    public void testGridIsWalkableOutOfBounds() {
+        Grid grid = createGrid(2, 2);
+        assertFalse(grid.isWalkable(-1, 0));
+        assertFalse(grid.isWalkable(0, -1));
+        assertFalse(grid.isWalkable(2, 0));
+        assertFalse(grid.isWalkable(0, 2));
+
+        grid.setWalkable(1, 1, false);
+        assertFalse(grid.isWalkable(1, 1));
+        grid.setWalkable(1, 1, true);
+        assertTrue(grid.isWalkable(1, 1));
+    }
+
+    /**
+     * 中文说明：验证启发式成本计算具备对称性并与曼哈顿距离线性相关。
+     */
+    @Test
+    public void testCostHeuristicSymmetry() {
+        assertEquals(35, Cost.hCost(0, 0, 3, 4));
+        assertEquals(35, Cost.hCost(3, 4, 0, 0));
+        assertEquals(0, Cost.hCost(5, 5, 5, 5));
+    }
+
+    /**
+     * 中文说明：验证多叉堆在多个子节点情形下仍可保持正确顺序。
+     */
+    @Test
+    public void testNodesSiftDownHandlesMultipleChildren() {
+        Nodes nodes = new Nodes();
+        Grid grid = createGrid(6, 6);
+        nodes.map = grid;
+
+        nodes.open(0, 0, 3, 4, Grid.DIRECTION_UP);
+        nodes.open(1, 0, 1, 2, Grid.DIRECTION_UP);
+        nodes.open(2, 0, 2, 0, Grid.DIRECTION_UP);
+        nodes.open(3, 0, 1, 5, Grid.DIRECTION_UP);
+        nodes.open(4, 0, 0, 1, Grid.DIRECTION_UP);
+
+        long first = nodes.close();
+        assertEquals(4, Node.getX(first));
+        assertEquals(0, Node.getY(first));
+
+        long second = nodes.close();
+        assertEquals(2, Node.getX(second));
+
+        long third = nodes.close();
+        assertEquals(1, Node.getX(third));
+
+        long fourth = nodes.close();
+        assertEquals(3, Node.getX(fourth));
+
+        long fifth = nodes.close();
+        assertEquals(0, Node.getX(fifth));
+
+        assertEquals(0, nodes.size);
+
+        nodes.clear();
+        assertTrue(nodes.isClean());
+        assertNull(nodes.map);
         assertTrue(grid.isClean());
     }
 }
