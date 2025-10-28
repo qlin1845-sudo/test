@@ -19,8 +19,8 @@ net/mooctest/Direction.class
 net/mooctest/NotificationService$NotificationType.class
 net/mooctest/Priority.class
 net/mooctest/NotificationService$EmailChannel.class
-net/mooctest/HighEfficiencyStrategy.class
 net/mooctest/ElevatorMode.class
+net/mooctest/HighEfficiencyStrategy.class
 net/mooctest/Elevator.class
 net/mooctest/PredictiveSchedulingStrategy.class
 net/mooctest/SecurityMonitor.class
