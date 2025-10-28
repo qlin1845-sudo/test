@@ -301,6 +301,15 @@ public class HotelTest {
     }
 
     @Test
+    public void testHotelGetFreeRoomsEmptyResult() {
+        // 验证当没有空闲房间时方法返回空集合
+        Hotel.addRoom(RoomType.STANDARD, 721, 2);
+        Hotel.rooms.stream().filter(r -> r.getRoomCode() == 721).findFirst().get().book();
+        List<Room> freeRooms = Hotel.getFreeRooms();
+        assertTrue(freeRooms.isEmpty());
+    }
+
+    @Test
     public void testHotelPrintAllRoomsInfoOrdering() {
         // 验证全量房间打印的排序优先级（状态 > 类型 > 价格 > 房号）
         Hotel.addRoom(RoomType.ADVANCED, 811, 2);
@@ -339,18 +348,18 @@ public class HotelTest {
     public void testManagerCheckInDiscountsAndStateChange() {
         // 验证不同入住天数的折扣计算及状态迁移
         Manager manager = new Manager();
-        Hotel.addRoom(RoomType.ADVANCED, 1001, 4);
-        Hotel.addRoom(RoomType.STANDARD, 1002, 2);
-        Hotel.addRoom(RoomType.DELUXE, 1003, 2);
+        Hotel.addRoom(RoomType.ADVANCED, 501, 4);
+        Hotel.addRoom(RoomType.STANDARD, 502, 2);
+        Hotel.addRoom(RoomType.DELUXE, 503, 2);
 
-        double costLongStay = manager.checkIn(8, 1001);
+        double costLongStay = manager.checkIn(8, 501);
         assertEquals(1536.0, costLongStay, 0.0);
-        assertTrue(Hotel.rooms.stream().filter(r -> r.getRoomCode() == 1001).findFirst().get().getState() instanceof CheckInState);
+        assertTrue(Hotel.rooms.stream().filter(r -> r.getRoomCode() == 501).findFirst().get().getState() instanceof CheckInState);
 
-        double costMidStay = manager.checkIn(5, 1002);
+        double costMidStay = manager.checkIn(5, 502);
         assertEquals(540.0, costMidStay, 0.0);
 
-        double costShortStay = manager.checkIn(3, 1003);
+        double costShortStay = manager.checkIn(3, 503);
         assertEquals(720.0, costShortStay, 0.0);
     }
 
@@ -358,9 +367,9 @@ public class HotelTest {
     public void testManagerCheckInInvalidDays() {
         // 验证入住天数非法时的异常
         Manager manager = new Manager();
-        Hotel.addRoom(RoomType.STANDARD, 1011, 2);
+        Hotel.addRoom(RoomType.STANDARD, 611, 2);
         try {
-            manager.checkIn(0, 1011);
+            manager.checkIn(0, 611);
             fail("天数为零应当抛出异常");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("Days should larger than zero"));
@@ -380,6 +389,20 @@ public class HotelTest {
     }
 
     @Test
+    public void testManagerCheckInTwiceOnSameRoom() {
+        // 验证同一房间重复办理入住会抛出异常
+        Manager manager = new Manager();
+        Hotel.addRoom(RoomType.DELUXE, 621, 2);
+        manager.checkIn(2, 621);
+        try {
+            manager.checkIn(1, 621);
+            fail("重复入住应当抛出异常");
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Cannot check in"));
+        }
+    }
+
+    @Test
     public void testManagerTransferPriceRomanConversion() {
         // 验证价格转换为罗马数字的正常场景
         Manager manager = new Manager();
@@ -393,6 +416,13 @@ public class HotelTest {
         Manager manager = new Manager();
         assertEquals("", manager.transferPrice(0));
         assertNull(manager.transferPrice(4000));
+    }
+
+    @Test
+    public void testManagerTransferPriceNegativeCase() {
+        // 验证价格为负值时返回空结果
+        Manager manager = new Manager();
+        assertNull(manager.transferPrice(-5));
     }
 
     @Test
@@ -421,6 +451,19 @@ public class HotelTest {
     }
 
     @Test
+    public void testOrderCreateWithNinetyPercentBoundary() {
+        // 验证订单金额恰好为500时仍触发九折
+        List<OrderItem> items = new ArrayList<>();
+        items.add(new OrderItem("Juice", 100.0, 3));
+        items.add(new OrderItem("Bread", 50.0, 4));
+        Order.createOrder(items);
+        Order order = Order.orders.get(Order.orders.size() - 1);
+        assertEquals(450.0, order.totalAmount(), 0.0);
+        assertEquals(90.0, order.getItems().get(0).getPaymentPrice(), 0.0);
+        assertEquals(45.0, order.getItems().get(1).getPaymentPrice(), 0.0);
+    }
+
+    @Test
     public void testOrderCreateWithEightyPercentDiscount() {
         // 验证订单金额达到八折阈值时折扣是否生效
         List<OrderItem> items = new ArrayList<>();
@@ -431,6 +474,19 @@ public class HotelTest {
         assertEquals(840.0, order.totalAmount(), 0.0);
         assertEquals(160.0, order.getItems().get(0).getPaymentPrice(), 0.0);
         assertEquals(120.0, order.getItems().get(1).getPaymentPrice(), 0.0);
+    }
+
+    @Test
+    public void testOrderCreateWithEightyPercentBoundary() {
+        // 验证订单金额恰好为1000时触发八折
+        List<OrderItem> items = new ArrayList<>();
+        items.add(new OrderItem("Steak", 200.0, 3));
+        items.add(new OrderItem("Fish", 100.0, 4));
+        Order.createOrder(items);
+        Order order = Order.orders.get(Order.orders.size() - 1);
+        assertEquals(160.0, order.getItems().get(0).getPaymentPrice(), 0.0);
+        assertEquals(80.0, order.getItems().get(1).getPaymentPrice(), 0.0);
+        assertEquals(800.0, order.totalAmount(), 0.0);
     }
 
     @Test
@@ -463,7 +519,7 @@ public class HotelTest {
     public void testOrderItemFormattingAndAmount() {
         // 验证订单项的金额计算与格式化输出
         OrderItem item = new OrderItem("Juice", 12.345, 3);
-        assertEquals(37.035, item.getAmount(), 0.0);
+        assertEquals(37.035, item.getAmount(), 0.000001);
         String line = item.PrintOrderItem();
         assertTrue(line.contains("Juice"));
         assertTrue(line.contains("12.34"));
@@ -480,6 +536,13 @@ public class HotelTest {
         assertEquals("Coffee", item.getProductName());
         assertEquals(20.0, item.getPaymentPrice(), 0.0);
         assertEquals(5, item.getCount());
+    }
+
+    @Test
+    public void testOrderFormatDoubleRounding() {
+        // 验证金额格式化采用截断而非四舍五入
+        assertEquals("12.34", Order.formatDouble(12.349));
+        assertEquals("12.30", Order.formatDouble(12.3));
     }
 
     @Test
@@ -685,6 +748,24 @@ public class HotelTest {
         Order order = Order.orders.get(0);
         assertEquals(20.0, order.totalAmount(), 0.0);
         assertEquals(3, shop.getProductByName("Snack").count);
+    }
+
+    @Test
+    public void testShopKeeperSellProductsAllFail() {
+        // 验证全部商品售卖失败时不会生成订单
+        Shop shop = new Shop();
+        Product snack = new Product("Snack", 10.0, 1);
+        shop.addProduct(snack);
+        ShopKeeper keeper = new ShopKeeper();
+        keeper.setShop(shop);
+        Map<String, Integer> plan = new LinkedHashMap<>();
+        plan.put("Ghost", 1);
+        plan.put("Snack", 5);
+        String output = captureOutput(() -> keeper.sellProducts(plan));
+        assertTrue(output.contains("Selld Failed:Product is not exists."));
+        assertTrue(output.contains("Selld Failed:Quantity of remaining products is not enough."));
+        assertTrue(Order.orders.isEmpty());
+        assertEquals(1, shop.getProductByName("Snack").count);
     }
 
     @Test

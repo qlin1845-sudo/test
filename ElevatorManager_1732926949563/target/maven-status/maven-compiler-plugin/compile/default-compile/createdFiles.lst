@@ -16,8 +16,8 @@ net/mooctest/MaintenanceManager$MaintenanceTask.class
 net/mooctest/NearestElevatorStrategy.class
 net/mooctest/ElevatorStatusReport.class
 net/mooctest/Direction.class
-net/mooctest/Priority.class
 net/mooctest/NotificationService$NotificationType.class
+net/mooctest/Priority.class
 net/mooctest/NotificationService$EmailChannel.class
 net/mooctest/ElevatorMode.class
 net/mooctest/HighEfficiencyStrategy.class
@@ -29,8 +29,8 @@ net/mooctest/ThreadPoolManager.class
 net/mooctest/NotificationService$SMSChannel.class
 net/mooctest/SystemConfig.class
 net/mooctest/LogManager$SystemLog.class
-net/mooctest/NotificationService$NotificationChannel.class
 net/mooctest/AnalyticsEngine$Report.class
+net/mooctest/NotificationService$NotificationChannel.class
 net/mooctest/EventType.class
 net/mooctest/MaintenanceManager$MaintenanceRecord.class
 net/mooctest/EnergySavingStrategy.class

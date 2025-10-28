@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite tests="50" failures="0" name="net.mooctest.HotelTest" time="0.048" errors="0" skipped="0">
+  <properties>
+    <property name="jansi.mode" value="force"/>
+    <property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
+    <property name="java.vm.version" value="11.0.28+6-post-Ubuntu-1ubuntu124.04.1"/>
+    <property name="sun.boot.library.path" value="/usr/lib/jvm/java-11-openjdk-amd64/lib"/>
+    <property name="maven.multiModuleProjectDirectory" value="/home/engine/project/Hotel_1571929007251"/>
+    <property name="java.vm.vendor" value="Ubuntu"/>
+    <property name="java.vendor.url" value="https://ubuntu.com/"/>
+    <property name="guice.disable.misplaced.annotation.check" value="true"/>
+    <property name="path.separator" value=":"/>
+    <property name="java.vm.name" value="OpenJDK 64-Bit Server VM"/>
+    <property name="sun.os.patch.level" value="unknown"/>
+    <property name="user.country" value="US"/>
+    <property name="sun.java.launcher" value="SUN_STANDARD"/>
+    <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
+    <property name="user.dir" value="/home/engine/project/Hotel_1571929007251"/>
+    <property name="java.vm.compressedOopsMode" value="32-bit"/>
+    <property name="java.runtime.version" value="11.0.28+6-post-Ubuntu-1ubuntu124.04.1"/>
+    <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment"/>
+    <property name="os.arch" value="amd64"/>
+    <property name="java.io.tmpdir" value="/tmp"/>
+    <property name="line.separator" value="
+"/>
+    <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
+    <property name="os.name" value="Linux"/>
+    <property name="classworlds.conf" value="/usr/share/maven/bin/m2.conf"/>
+    <property name="sun.jnu.encoding" value="UTF-8"/>
+    <property name="java.library.path" value="/usr/lib/x86_64-linux-gnu:/usr/local/lib::/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib"/>
+    <property name="maven.conf" value="/usr/share/maven/conf"/>
+    <property name="jdk.debug" value="release"/>
+    <property name="java.class.version" value="55.0"/>
+    <property name="java.specification.name" value="Java Platform API Specification"/>
+    <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
+    <property name="os.version" value="6.12.35"/>
+    <property name="library.jansi.path" value="/usr/share/maven/lib/jansi-native"/>
+    <property name="user.home" value="/home/engine"/>
+    <property name="user.timezone" value="Etc/UTC"/>
+    <property name="java.awt.printerjob" value="sun.print.PSPrinterJob"/>
+    <property name="file.encoding" value="UTF-8"/>
+    <property name="java.specification.version" value="11"/>
+    <property name="user.name" value="engine"/>
+    <property name="java.class.path" value="/usr/share/maven/boot/plexus-classworlds-2.x.jar"/>
+    <property name="org.slf4j.simpleLogger.defaultLogLevel" value="error"/>
+    <property name="java.vm.specification.version" value="11"/>
+    <property name="sun.arch.data.model" value="64"/>
+    <property name="sun.java.command" value="org.codehaus.plexus.classworlds.launcher.Launcher -q test"/>
+    <property name="java.home" value="/usr/lib/jvm/java-11-openjdk-amd64"/>
+    <property name="user.language" value="en"/>
+    <property name="java.specification.vendor" value="Oracle Corporation"/>
+    <property name="awt.toolkit" value="sun.awt.X11.XToolkit"/>
+    <property name="java.vm.info" value="mixed mode, sharing"/>
+    <property name="java.version" value="11.0.28"/>
+    <property name="java.vendor" value="Ubuntu"/>
+    <property name="java.specification.maintenance.version" value="3"/>
+    <property name="maven.home" value="/usr/share/maven"/>
+    <property name="file.separator" value="/"/>
+    <property name="java.version.date" value="2025-07-15"/>
+    <property name="java.vendor.url.bug" value="https://bugs.launchpad.net/ubuntu/+source/openjdk-lts"/>
+    <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
+    <property name="sun.cpu.endian" value="little"/>
+    <property name="sun.cpu.isalist" value=""/>
+  </properties>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelGetFreeRoomsOrdering" time="0.015"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopGetAllProductsInfoSorting" time="0.012"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderCreateWithNinetyPercentBoundary" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testRoomTypeValidation" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testSetRoomCodeRejectsDoubleZero" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelPrintAllRoomsInfoOrdering" time="0.003"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopSellProductScenarios" time="0.005"/>
+  <testcase classname="net.mooctest.HotelTest" name="testProductCountValidationAndInfo" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testProductDiscountValidation" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopKeeperSellProductsCreatesOrder" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testRoomInitializationAndToString" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelAddRoomAndQueryOutput" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelRemoveRoomNotExist" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testSetRoomCodeRejectsTooLarge" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testSetRoomCodeRejectsTooSmall" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopKeeperSellProductsAllFail" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderCreateWithEightyPercentBoundary" time="0.002"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopUpdateProduct" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderPrintOrdersOutput" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelQueryRoomNotExist" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testBookedStateBehaviors" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopDeleteAndExceptions" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testManagerTransferPriceBoundaryCases" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testSetCapacityRejectsOutOfRange" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testManagerCheckInTwiceOnSameRoom" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testManagerCheckInRoomNotExists" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderFormatDoubleRounding" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testSetTypeRejectsUnknownType" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testSetPriceRejectsTooManyDecimals" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderCreateWithNinetyPercentDiscount" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testManagerTransferPriceNegativeCase" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testManagerCheckInDiscountsAndStateChange" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testProductNameValidation" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testProductPriceValidation" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelAddRoomDuplicateAndInvalidType" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopAddProductMergeAndIndex" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderSearchMaxOrder" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testManagerTransferPriceRomanConversion" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelRemoveRoomSuccess" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testCheckInStateBehaviors" time="0.002"/>
+  <testcase classname="net.mooctest.HotelTest" name="testFreeTimeStateBehaviors" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderCreateWithoutDiscount" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testManagerCheckInInvalidDays" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderItemSetterGetter" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopKeeperShowAllProductsOutput" time="0.001"/>
+  <testcase classname="net.mooctest.HotelTest" name="testHotelGetFreeRoomsEmptyResult" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderCreateWithEightyPercentDiscount" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testOrderItemFormattingAndAmount" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testSetPriceRejectsNonPositive" time="0"/>
+  <testcase classname="net.mooctest.HotelTest" name="testShopSearchAndGetProductByName" time="0"/>
+</testsuite>
