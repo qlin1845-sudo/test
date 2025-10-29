@@ -4,6 +4,8 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Date;
 import java.util.HashSet;
@@ -32,6 +34,19 @@ public class LibraryTest {
         @Override
         public void returnBook(Book book) throws Exception {
             returnInvoked = true;
+        }
+    }
+
+    private static class LenientBook extends Book {
+        LenientBook(String title, BookType type, int total, int available) {
+            super(title, "Author", "ISBN" + title, type, total);
+            setAvailableCopies(available);
+        }
+
+        @Override
+        public boolean isAvailable() {
+            // 复杂逻辑说明：覆盖可用性校验以忽略库存，用于触发借书中的备用预约分支。
+            return true;
         }
     }
 
@@ -64,6 +79,12 @@ public class LibraryTest {
     private void forceBorrowedBook(User user, Book book) {
         // 复杂逻辑说明：借阅列表类型为 BorrowRecord，此处通过原始类型插入 Book 以匹配 contains 判断。
         ((List) user.borrowedBooks).add(book);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void forceReservationEntry(User user, Book book) {
+        // 复杂逻辑说明：预约列表声明为 Reservation，此处插入 Book 对象以命中已预约分支。
+        ((List) user.reservations).add(book);
     }
 
     @Test
@@ -183,6 +204,13 @@ public class LibraryTest {
         long days = (seriousReturn.getTime() - seriousDue.getTime()) / dayMillis;
         assertEquals(days * 60.0, serious.getFineAmount(), 0.0001);
 
+        Book journal = createBook("Journal", BookType.JOURNAL, 3, 3);
+        BorrowRecord journalRecord = createBorrowRecord(journal, user, daysFromNow(-4), daysFromNow(-2));
+        Date journalReturn = new Date();
+        journalRecord.setReturnDate(journalReturn);
+        long journalDays = (journalReturn.getTime() - journalRecord.getDueDate().getTime()) / dayMillis;
+        assertEquals(journalDays * 2.0, journalRecord.getFineAmount(), 0.0001);
+
         BorrowRecord extendRecord = createBorrowRecord(general, user, daysFromNow(-2), daysFromNow(10));
         Date originalDue = extendRecord.getDueDate();
         extendRecord.extendDueDate(7);
@@ -285,9 +313,25 @@ public class LibraryTest {
     }
 
     @Test
+    public void testUserReservationDuplicateRestriction() throws Exception {
+        // 测试目的：验证重复预约拦截逻辑；期望：检测到同一图书已在预约列表时抛出限制异常。
+        RegularUser user = new RegularUser("Dup", "RD1");
+        user.creditScore = 80;
+        Book book = createBook("DupBook", BookType.GENERAL, 1, 1);
+        forceReservationEntry(user, book);
+        try {
+            user.reserveBook(book);
+            fail("重复预约应抛出ReservationNotAllowedException");
+        } catch (ReservationNotAllowedException e) {
+            assertEquals("This book has already been reserved.", e.getMessage());
+        }
+    }
+
+    @Test
     public void testRegularUserBorrowingBranches() throws Exception {
         // 测试目的：覆盖普通用户借书的各种限制条件；期望：不同约束下抛出对应异常，条件满足时成功借书。
         Book available = createBook("Normal", BookType.GENERAL, 2, 2);
+        long dayMillis = 24L * 60L * 60L * 1000L;
 
         RegularUser blacklisted = new RegularUser("Black", "R1");
         blacklisted.setAccountStatus(AccountStatus.BLACKLISTED);
@@ -359,8 +403,23 @@ public class LibraryTest {
         Book successBook = createBook("SuccessBook", BookType.GENERAL, 2, 2);
         success.borrowBook(successBook);
         assertEquals(1, success.getBorrowedBooks().size());
+        BorrowRecord successRecord = success.getBorrowedBooks().get(0);
+        long borrowSpan = (successRecord.getDueDate().getTime() - successRecord.getBorrowDate().getTime()) / dayMillis;
+        assertEquals(14L, borrowSpan);
         assertEquals(1, successBook.getAvailableCopies());
         assertEquals(101, success.getCreditScore());
+    }
+
+    @Test
+    public void testRegularUserBorrowTriggersReservation() throws Exception {
+        // 测试目的：验证库存不足但可借时转入预约流程；期望：借阅请求转为预约并记录在用户与图书队列。
+        RegularUser user = new RegularUser("ReserveFlow", "RR1");
+        user.creditScore = 80;
+        LenientBook book = new LenientBook("Lenient", BookType.GENERAL, 1, 0);
+        user.borrowBook(book);
+        assertEquals(0, user.getBorrowedBooks().size());
+        assertEquals(1, book.getReservationQueue().size());
+        assertEquals(1, user.reservations.size());
     }
 
     @Test
@@ -414,6 +473,7 @@ public class LibraryTest {
     public void testVIPUserBorrowingBranches() throws Exception {
         // 测试目的：覆盖VIP用户借书的限制条件与成功路径；期望：触发限制时抛出异常，正常借书增加积分。
         Book available = createBook("VIPAvailable", BookType.GENERAL, 3, 3);
+        long dayMillis = 24L * 60L * 60L * 1000L;
 
         VIPUser blacklisted = new VIPUser("Black", "V1");
         blacklisted.setAccountStatus(AccountStatus.BLACKLISTED);
@@ -476,6 +536,9 @@ public class LibraryTest {
         Book rare = createBook("RareVIP", BookType.RARE, 2, 2);
         success.borrowBook(rare);
         assertEquals(1, success.getBorrowedBooks().size());
+        BorrowRecord vipRecord = success.getBorrowedBooks().get(0);
+        long vipSpan = (vipRecord.getDueDate().getTime() - vipRecord.getBorrowDate().getTime()) / dayMillis;
+        assertEquals(30L, vipSpan);
         assertEquals(1, rare.getAvailableCopies());
         assertEquals(102, success.getCreditScore());
     }
@@ -692,6 +755,27 @@ public class LibraryTest {
         } catch (SMSException e) {
             assertEquals("The user does not have a phone number.", e.getMessage());
         }
+    }
+
+    @Test
+    public void testUserReceiveNotificationBranches() {
+        // 测试目的：验证用户接收通知时的黑名单分支与正常分支；期望：黑名单仅输出警告，正常用户输出通知内容。
+        RegularUser blacklisted = new RegularUser("NotifyBlack", "NB1");
+        blacklisted.setAccountStatus(AccountStatus.BLACKLISTED);
+        RegularUser active = new RegularUser("NotifyActive", "NA1");
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(output));
+        try {
+            blacklisted.receiveNotification("黑名单消息");
+            active.receiveNotification("正常消息");
+        } finally {
+            System.setOut(original);
+        }
+        String logs = output.toString();
+        assertTrue(logs.contains("Blacklisted users cannot receive notifications."));
+        assertTrue(logs.contains("Notify user [NotifyActive]: 正常消息"));
     }
 
     @Test
