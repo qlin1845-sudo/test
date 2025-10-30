@@ -177,6 +177,28 @@ public class LibraryTest {
     }
 
     @Test
+    public void testBookMetadataMutators() {
+        // 测试目的：验证图书元数据相关的setter方法；期望：标题、损坏标记与维修标记切换后可用性状态正确反映。
+        Book book = createBook("Meta", BookType.GENERAL, 2, 2);
+        book.setTitle("元数据更新");
+        assertEquals("元数据更新", book.getTitle());
+
+        book.setDamaged(true);
+        assertTrue(book.isDamaged());
+        assertFalse(book.isAvailable());
+
+        book.setDamaged(false);
+        assertFalse(book.isDamaged());
+
+        book.setInRepair(true);
+        assertFalse(book.isAvailable());
+
+        book.setInRepair(false);
+        book.setAvailableCopies(2);
+        assertTrue(book.isAvailable());
+    }
+
+    @Test
     public void testBorrowRecordFineAndExtension() {
         // 测试目的：验证借阅记录罚金计算与续期逻辑；期望：不同书籍类型、用户状态与损坏情况均正确计算罚金，续期增加到期日。
         RegularUser user = new RegularUser("User", "U1");
@@ -261,6 +283,19 @@ public class LibraryTest {
         user5.deductScore(10);
         assertEquals(0, user5.getCreditScore());
         assertEquals(AccountStatus.FROZEN, user5.getAccountStatus());
+    }
+
+    @Test
+    public void testUserPartialFinePaymentAndAddScore() {
+        // 测试目的：验证部分缴纳罚金与正常加分场景；期望：欠款余额正确减少且账户状态保持有效。
+        RegularUser user = new RegularUser("Partial", "PF1");
+        user.fines = 30;
+        user.payFine(10);
+        assertEquals(20.0, user.getFines(), 0.0001);
+        assertEquals(AccountStatus.ACTIVE, user.getAccountStatus());
+
+        user.addScore(5);
+        assertEquals(105, user.getCreditScore());
     }
 
     @Test
@@ -661,6 +696,29 @@ public class LibraryTest {
     }
 
     @Test
+    public void testBaseUserFindBorrowRecordDelegation() {
+        // 测试目的：验证抽象用户基类的借阅记录查找逻辑；期望：基类实现能正确匹配借阅图书并在未命中时返回null。
+        User baseUser = new User("Base", "BU1", UserType.REGULAR) {
+            @Override
+            public void borrowBook(Book book) {
+                // 测试桩实现，保持借阅列表由测试用例控制。
+            }
+
+            @Override
+            public void returnBook(Book book) {
+                // 测试桩实现，保持借阅列表由测试用例控制。
+            }
+        };
+        Book booked = createBook("BaseBook", BookType.GENERAL, 1, 1);
+        BorrowRecord record = createBorrowRecord(booked, baseUser, new Date(), daysFromNow(2));
+        baseUser.borrowedBooks.add(record);
+        assertSame(record, baseUser.findBorrowRecord(booked));
+
+        Book other = createBook("OtherBaseBook", BookType.GENERAL, 1, 1);
+        assertNull(baseUser.findBorrowRecord(other));
+    }
+
+    @Test
     public void testCreditRepairService() throws Exception {
         // 测试目的：验证信用修复服务的金额限制与状态恢复；期望：金额不足抛异常，满足条件时积分提升并恢复账户状态。
         CreditRepairService service = new CreditRepairService();
@@ -755,6 +813,39 @@ public class LibraryTest {
         } catch (SMSException e) {
             assertEquals("The user does not have a phone number.", e.getMessage());
         }
+    }
+
+    @Test
+    public void testNotificationServiceFallbackOutputs() {
+        // 测试目的：通过捕获日志验证邮件、短信与应用兜底依次执行；期望：输出包含各级兜底提示与成功信息。
+        NotificationService service = new NotificationService();
+        RegularUser emailUser = new RegularUser("EmailOk", "NL1");
+        emailUser.setEmail("ok@example.com");
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(output));
+        try {
+            service.sendNotification(emailUser, "邮件消息");
+
+            RegularUser smsFallback = new RegularUser("SmsFallback", "NL2");
+            smsFallback.setEmail(null);
+            smsFallback.setPhoneNumber("555888");
+            service.sendNotification(smsFallback, "短信消息");
+
+            RegularUser appFallback = new RegularUser("AppFallback", "NL3");
+            appFallback.setEmail("");
+            appFallback.setPhoneNumber("");
+            service.sendNotification(appFallback, "应用消息");
+        } finally {
+            System.setOut(original);
+        }
+        String logs = output.toString();
+        assertTrue(logs.contains("Successfully sent email to ok@example.com: 邮件消息"));
+        assertTrue(logs.contains("Email sending failed. Try sending a text message..."));
+        assertTrue(logs.contains("Successfully sent text message to.555888: 短信消息"));
+        assertTrue(logs.contains("Text message sending failed. Try using in-app notifications..."));
+        assertTrue(logs.contains("Send an in-app notification to the user. [AppFallback]: 应用消息"));
     }
 
     @Test
