@@ -505,6 +505,32 @@ public class LibraryTest {
     }
 
     @Test
+    public void testRegularUserReturnLongOverdueFreeze() throws Exception {
+        // 测试目的：验证长时间逾期还书导致信用冻结及罚金计算；期望：逾期超过借期时冻结账户并正确累加罚金。
+        RegularUser riskUser = new RegularUser("Risk", "R13");
+        riskUser.creditScore = 52;
+        Book longBook = createBook("LongBorrow", BookType.GENERAL, 1, 1);
+        longBook.setAvailableCopies(0);
+        BorrowRecord longRecord = createBorrowRecord(longBook, riskUser, daysFromNow(-20), daysFromNow(-15));
+        riskUser.borrowedBooks.add(longRecord);
+
+        riskUser.returnBook(longBook);
+        assertEquals(0, riskUser.getBorrowedBooks().size());
+        assertEquals(1, longBook.getAvailableCopies());
+        assertEquals(47, riskUser.getCreditScore());
+        assertEquals(AccountStatus.FROZEN, riskUser.getAccountStatus());
+
+        double fine = longRecord.getFineAmount();
+        assertTrue(fine > 0);
+        assertEquals(fine, riskUser.getFines(), 0.0001);
+        long dayMillis = 24L * 60L * 60L * 1000L;
+        long borrowDuration = (longRecord.getReturnDate().getTime() - longRecord.getBorrowDate().getTime()) / dayMillis;
+        assertTrue(borrowDuration > 14);
+        long overdueDays = (longRecord.getReturnDate().getTime() - longRecord.getDueDate().getTime()) / dayMillis;
+        assertEquals((double) overdueDays, fine, 0.0001);
+    }
+
+    @Test
     public void testVIPUserBorrowingBranches() throws Exception {
         // 测试目的：覆盖VIP用户借书的限制条件与成功路径；期望：触发限制时抛出异常，正常借书增加积分。
         Book available = createBook("VIPAvailable", BookType.GENERAL, 3, 3);
@@ -784,7 +810,20 @@ public class LibraryTest {
         NotificationService service = new NotificationService();
         RegularUser blacklisted = new RegularUser("Black", "N1");
         blacklisted.setAccountStatus(AccountStatus.BLACKLISTED);
-        service.sendNotification(blacklisted, "msg");
+        ByteArrayOutputStream forbiddenOutput = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(forbiddenOutput));
+        try {
+            service.sendNotification(blacklisted, "msg");
+        } finally {
+            System.setOut(original);
+        }
+        String forbiddenLogs = forbiddenOutput.toString();
+        assertTrue(forbiddenLogs.contains("Blacklisted users cannot receive notifications."));
+        assertFalse(forbiddenLogs.contains("Email sending failed"));
+        assertFalse(forbiddenLogs.contains("Successfully sent email"));
+        assertFalse(forbiddenLogs.contains("Successfully sent text message"));
+        assertFalse(forbiddenLogs.contains("Send an in-app notification"));
 
         RegularUser emailUser = new RegularUser("Email", "N2");
         emailUser.setEmail("user@example.com");
