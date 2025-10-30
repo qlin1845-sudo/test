@@ -50,6 +50,25 @@ public class LibraryTest {
         }
     }
 
+    private static class DeceptiveBook extends Book {
+        DeceptiveBook(String title, BookType type, int total, int available) {
+            super(title, "Author", "ISBN" + title, type, total);
+            setAvailableCopies(available);
+        }
+
+        @Override
+        public boolean isAvailable() {
+            // 复杂逻辑说明：伪装为不可借状态以验证用户侧可借性前置校验。
+            return false;
+        }
+
+        @Override
+        public void borrow() {
+            // 复杂逻辑说明：绕过可借性校验直接扣减库存，用于区分前置判断与借阅实现效果。
+            setAvailableCopies(getAvailableCopies() - 1);
+        }
+    }
+
     private Book createBook(String title, BookType type, int total, int available) {
         Book book = new Book(title, "Author", "ISBN" + title, type, total);
         book.setAvailableCopies(available);
@@ -299,6 +318,16 @@ public class LibraryTest {
     }
 
     @Test
+    public void testUserDeductScoreKeepsBlacklistedStatus() {
+        // 测试目的：验证扣减积分时黑名单状态保持不变；期望：黑名单用户降分后仍处于黑名单且积分按规则减少。
+        RegularUser user = new RegularUser("BlackGuard", "PF2");
+        user.setAccountStatus(AccountStatus.BLACKLISTED);
+        user.deductScore(80);
+        assertEquals(AccountStatus.BLACKLISTED, user.getAccountStatus());
+        assertEquals(20, user.getCreditScore());
+    }
+
+    @Test
     public void testUserReservationWorkflow() throws Exception {
         // 测试目的：验证预约与取消预约流程；期望：账户状态、信用分等限制均能触发对应异常，成功预约后可正常取消。
         RegularUser user = new RegularUser("User", "U1");
@@ -329,7 +358,7 @@ public class LibraryTest {
             assertEquals("Insufficient credit score. Cannot reserve books.", e.getMessage());
         }
 
-        user.creditScore = 80;
+        user.creditScore = 50;
         book.setInRepair(true);
         user.reserveBook(book);
         assertEquals(1, book.getReservationQueue().size());
@@ -455,6 +484,38 @@ public class LibraryTest {
         assertEquals(0, user.getBorrowedBooks().size());
         assertEquals(1, book.getReservationQueue().size());
         assertEquals(1, user.reservations.size());
+    }
+
+    @Test
+    public void testRegularUserBorrowRespectsPreBorrowAvailabilityCheck() throws Exception {
+        // 测试目的：验证普通用户在图书声称不可借时立即抛出异常；期望：触发前置校验并保持库存与借阅记录不变。
+        RegularUser user = new RegularUser("Guard", "RR2");
+        user.creditScore = 80;
+        DeceptiveBook deceptive = new DeceptiveBook("Deceptive", BookType.GENERAL, 2, 2);
+        try {
+            user.borrowBook(deceptive);
+            fail("伪装可借的图书应被前置校验拦截");
+        } catch (BookNotAvailableException e) {
+            assertEquals("The book is unavailable and cannot be borrowed.", e.getMessage());
+        }
+        assertTrue(user.getBorrowedBooks().isEmpty());
+        assertEquals(80, user.getCreditScore());
+        assertEquals(2, deceptive.getAvailableCopies());
+    }
+
+    @Test
+    public void testRegularUserBorrowWithSingleAvailableCopy() throws Exception {
+        // 测试目的：验证库存仅剩一册时仍可正常借阅；期望：阈值条件不会误判为需要预约且借期保持14天。
+        RegularUser user = new RegularUser("Edge", "RR3");
+        user.creditScore = 60;
+        Book singleCopy = createBook("SingleCopy", BookType.GENERAL, 1, 1);
+        user.borrowBook(singleCopy);
+        assertEquals(0, singleCopy.getAvailableCopies());
+        assertEquals(1, user.getBorrowedBooks().size());
+        assertEquals(61, user.getCreditScore());
+        BorrowRecord record = user.getBorrowedBooks().get(0);
+        long span = (record.getDueDate().getTime() - record.getBorrowDate().getTime()) / (24L * 60L * 60L * 1000L);
+        assertEquals(14L, span);
     }
 
     @Test
@@ -594,6 +655,7 @@ public class LibraryTest {
         }
 
         VIPUser success = new VIPUser("Success", "V7");
+        success.creditScore = 50;
         Book rare = createBook("RareVIP", BookType.RARE, 2, 2);
         success.borrowBook(rare);
         assertEquals(1, success.getBorrowedBooks().size());
@@ -602,6 +664,22 @@ public class LibraryTest {
         assertEquals(30L, vipSpan);
         assertEquals(1, rare.getAvailableCopies());
         assertEquals(102, success.getCreditScore());
+    }
+
+    @Test
+    public void testVIPUserBorrowRespectsPreBorrowAvailabilityCheck() throws Exception {
+        // 测试目的：验证VIP用户同样受可借性前置校验约束；期望：伪装不可借的图书不被错误借出。
+        VIPUser vip = new VIPUser("VIPGuard", "V14");
+        DeceptiveBook deceptive = new DeceptiveBook("VipDeceptive", BookType.GENERAL, 2, 2);
+        try {
+            vip.borrowBook(deceptive);
+            fail("不可借图书应抛出BookNotAvailableException");
+        } catch (BookNotAvailableException e) {
+            assertEquals("The book is unavailable and cannot be borrowed.", e.getMessage());
+        }
+        assertTrue(vip.getBorrowedBooks().isEmpty());
+        assertEquals(100, vip.getCreditScore());
+        assertEquals(2, deceptive.getAvailableCopies());
     }
 
     @Test
@@ -705,7 +783,7 @@ public class LibraryTest {
             assertEquals("The credit score is too low to renew the loan.", e.getMessage());
         }
 
-        user.creditScore = 80;
+        user.creditScore = 60;
         try {
             service.autoRenew(user, book);
             fail("无借阅记录应抛InvalidOperationException");
@@ -760,6 +838,10 @@ public class LibraryTest {
         user.setAccountStatus(AccountStatus.FROZEN);
         service.repairCredit(user, 20);
         assertEquals(60, user.getCreditScore());
+        assertEquals(AccountStatus.ACTIVE, user.getAccountStatus());
+
+        service.repairCredit(user, 10);
+        assertEquals(61, user.getCreditScore());
         assertEquals(AccountStatus.ACTIVE, user.getAccountStatus());
     }
 
@@ -979,11 +1061,17 @@ public class LibraryTest {
         library.registerUser(lowCredit);
         assertEquals(0, users.size());
 
+        lowCredit.creditScore = 50;
+        library.registerUser(lowCredit);
+        assertEquals(1, users.size());
+        library.registerUser(lowCredit);
+        assertEquals(1, users.size());
+
         RegularUser normal = new RegularUser("Normal", "L2");
         library.registerUser(normal);
-        assertEquals(1, users.size());
+        assertEquals(2, users.size());
         library.registerUser(normal);
-        assertEquals(1, users.size());
+        assertEquals(2, users.size());
 
         Book book = createBook("LibraryBook", BookType.GENERAL, 2, 2);
         library.addBook(book);
@@ -1078,6 +1166,30 @@ public class LibraryTest {
         assertFalse(queuedUser.borrowInvoked);
         assertEquals(1, book.getReservationQueue().size());
         assertTrue(book.getReservationQueue().contains(queuedReservation));
+    }
+
+    @Test
+    public void testLibraryProcessReservationSendsNotification() throws Exception {
+        // 测试目的：验证成功处理预约时通知服务被调用；期望：输出包含应用内通知信息且预约队列清空。
+        Library library = new Library();
+        Book book = createBook("NotifyQueue", BookType.GENERAL, 1, 1);
+        TestUser notifyUser = new TestUser("Notify", "QL2");
+        book.addReservation(new Reservation(book, notifyUser));
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(output));
+        try {
+            library.processReservations(book);
+        } finally {
+            System.setOut(original);
+        }
+
+        String logs = output.toString();
+        assertTrue(notifyUser.borrowInvoked);
+        assertTrue(logs.contains("Send an in-app notification to the user. [Notify]:"));
+        assertTrue(logs.contains("The book [\" + book.getTitle() + \"] you reserved is now available for borrowing."));
+        assertEquals(0, book.getReservationQueue().size());
     }
 
     @Test
