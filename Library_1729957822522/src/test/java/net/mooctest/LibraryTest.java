@@ -484,6 +484,12 @@ public class LibraryTest {
         assertEquals(0, user.getBorrowedBooks().size());
         assertEquals(1, book.getReservationQueue().size());
         assertEquals(1, user.reservations.size());
+
+        Reservation queuedReservation = book.getReservationQueue().peek();
+        assertNotNull(queuedReservation);
+        assertSame(book, queuedReservation.getBook());
+        assertSame(user, queuedReservation.getUser());
+        assertSame(queuedReservation, user.reservations.get(0));
     }
 
     @Test
@@ -589,6 +595,25 @@ public class LibraryTest {
         assertTrue(borrowDuration > 14);
         long overdueDays = (longRecord.getReturnDate().getTime() - longRecord.getDueDate().getTime()) / dayMillis;
         assertEquals((double) overdueDays, fine, 0.0001);
+    }
+
+    @Test
+    public void testRegularUserReturnAccumulatesFineAndState() throws Exception {
+        // 测试目的：验证普通用户逾期归还时罚金累加与信用状态更新；期望：罚金按逾期天数累加且账户状态保持有效。
+        RegularUser user = new RegularUser("FineTrace", "R14");
+        Book book = createBook("FineTraceBook", BookType.GENERAL, 1, 1);
+        book.setAvailableCopies(0);
+        BorrowRecord record = createBorrowRecord(book, user, daysFromNow(-7), daysFromNow(-3));
+        user.borrowedBooks.add(record);
+        user.fines = 5;
+        user.returnBook(book);
+        double expectedFine = record.getFineAmount();
+        assertTrue("罚金应大于0以体现逾期效果", expectedFine > 0);
+        assertEquals(5 + expectedFine, user.getFines(), 0.0001);
+        assertEquals(AccountStatus.ACTIVE, user.getAccountStatus());
+        assertEquals(95, user.getCreditScore());
+        assertTrue(user.getBorrowedBooks().isEmpty());
+        assertEquals(1, book.getAvailableCopies());
     }
 
     @Test
@@ -748,6 +773,25 @@ public class LibraryTest {
         } catch (InvalidOperationException e) {
             assertEquals("This book has not been borrowed.", e.getMessage());
         }
+    }
+
+    @Test
+    public void testVIPUserReturnAccumulatesFineAndState() throws Exception {
+        // 测试目的：验证VIP用户逾期归还时罚金累加与信用扣分逻辑；期望：罚金累加到账户且信用分按规则减少。
+        VIPUser vip = new VIPUser("FineTraceVIP", "V15");
+        Book book = createBook("FineTraceVIPBook", BookType.GENERAL, 1, 1);
+        book.setAvailableCopies(0);
+        BorrowRecord record = createBorrowRecord(book, vip, daysFromNow(-6), daysFromNow(-2));
+        vip.borrowedBooks.add(record);
+        vip.fines = 40;
+        vip.returnBook(book);
+        double expectedFine = record.getFineAmount();
+        assertTrue("罚金需大于0以确认逾期逻辑生效", expectedFine > 0);
+        assertEquals(40 + expectedFine, vip.getFines(), 0.0001);
+        assertEquals(AccountStatus.ACTIVE, vip.getAccountStatus());
+        assertEquals(97, vip.getCreditScore());
+        assertTrue(vip.getBorrowedBooks().isEmpty());
+        assertEquals(1, book.getAvailableCopies());
     }
 
     @Test
