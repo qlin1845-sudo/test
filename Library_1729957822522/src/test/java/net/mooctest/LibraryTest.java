@@ -805,6 +805,29 @@ public class LibraryTest {
     }
 
     @Test
+    public void testInventoryReportLostInsufficientFine() throws Exception {
+        // 测试目的：验证报失罚金不足时的异常流程；期望：抛出IllegalArgumentException且库存与罚金不被修改。
+        InventoryService service = new InventoryService();
+        Book book = createBook("Compensation", BookType.GENERAL, 3, 3);
+        RegularUser user = new RegularUser("LimitedFunds", "I2");
+        BorrowRecord record = createBorrowRecord(book, user, new Date(), daysFromNow(3));
+        user.borrowedBooks.add(record);
+        forceBorrowedBook(user, book);
+        user.fines = 100;
+        book.setAvailableCopies(3);
+
+        try {
+            service.reportLost(book, user);
+            fail("罚金余额不足时应该抛出IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals("If the user is on the blacklist, they cannot pay the fine.", e.getMessage());
+            assertEquals(100.0, user.getFines(), 0.0001);
+            assertEquals(3, book.getTotalCopies());
+            assertEquals(3, book.getAvailableCopies());
+        }
+    }
+
+    @Test
     public void testNotificationServiceFallbacks() throws Exception {
         // 测试目的：验证通知服务的多级兜底策略；期望：黑名单直接返回，邮箱失败时转短信，短信失败时转应用内。
         NotificationService service = new NotificationService();
@@ -930,6 +953,19 @@ public class LibraryTest {
     }
 
     @Test
+    public void testReservationPriorityNoPenaltyForOnTimeReturns() {
+        // 测试目的：验证按时归还的预约不会降低优先级；期望：返回记录在截止日归还时保持原信用分优先级。
+        Book book = createBook("OnTimeReserve", BookType.GENERAL, 1, 1);
+        RegularUser punctual = new RegularUser("Punctual", "RP4");
+        BorrowRecord punctualRecord = createBorrowRecord(book, punctual, daysFromNow(-4), daysFromNow(-2));
+        punctualRecord.setReturnDate(daysFromNow(-2));
+        punctual.borrowedBooks.add(punctualRecord);
+
+        Reservation onTimeReservation = new Reservation(book, punctual);
+        assertEquals(punctual.getCreditScore(), onTimeReservation.getPriority());
+    }
+
+    @Test
     public void testLibraryUserAndBookManagement() throws Exception {
         // 测试目的：验证图书馆注册用户与添加图书的分支；期望：低信用拒绝注册、重复注册与重复添书不重复入库。
         Library library = new Library();
@@ -1024,6 +1060,24 @@ public class LibraryTest {
         reportUser.fines = 30;
         library.reportDamagedBook(reportUser, book);
         library.reportDamagedBook(reportUser, unavailable);
+    }
+
+    @Test
+    public void testLibraryProcessReservationWhenBookUnavailable() throws Exception {
+        // 测试目的：验证图书不可用时不会处理预约队列；期望：队列保持原样且借阅逻辑不被触发。
+        Library library = new Library();
+        Book book = createBook("UnavailableQueue", BookType.GENERAL, 1, 1);
+        book.setInRepair(true);
+        TestUser queuedUser = new TestUser("Queued", "QL1");
+        Reservation queuedReservation = new Reservation(book, queuedUser);
+        book.addReservation(queuedReservation);
+        assertEquals(1, book.getReservationQueue().size());
+
+        library.processReservations(book);
+
+        assertFalse(queuedUser.borrowInvoked);
+        assertEquals(1, book.getReservationQueue().size());
+        assertTrue(book.getReservationQueue().contains(queuedReservation));
     }
 
     @Test
