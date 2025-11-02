@@ -931,4 +931,49 @@ public class StudentTest {
         record.setScore(100.0);
         assertEquals(100.0, record.getScore(), 1e-9);
     }
+
+    @Test
+    public void testEnrollmentEqualsSameInstance() {
+        // 验证选课对象与不同实例但ID相同视为相等
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        EnrollmentRepository repository = new InMemoryEnrollmentRepository();
+        repository.save(enrollment);
+        Enrollment fetched = repository.findById(enrollment.getId()).get();
+        assertEquals(enrollment, fetched);
+        assertEquals(enrollment.hashCode(), fetched.hashCode());
+    }
+
+    @Test
+    public void testEnrollmentServiceUsesGradingPolicyComponents() {
+        // 验证选课服务的百分比计算会调用评分策略组件
+        InMemoryStudentRepository studentRepository = new InMemoryStudentRepository();
+        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        GradingPolicy policy = createStandardPolicy();
+        EnrollmentService service = new EnrollmentService(studentRepository, courseRepository, enrollmentRepository, policy);
+        Student student = studentRepository.save(new Student("孙八", LocalDate.now().minusYears(18)));
+        Course course = courseRepository.save(new Course("CS500", "人工智能", 3));
+        Enrollment enrollment = service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+        enrollment.recordGrade(new GradeRecord(GradeComponentType.ASSIGNMENT, 75));
+        enrollment.recordGrade(new GradeRecord(GradeComponentType.FINAL, 85));
+        enrollmentRepository.save(enrollment);
+        double percentage = service.computeEnrollmentPercentage(enrollment.getId());
+        assertEquals(0.4 * 75 + 0.6 * 85, percentage, 1e-9);
+    }
+
+    @Test
+    public void testGradeComponentSetterBoundaries() {
+        // 验证成绩组成的权重上下界可被接受
+        GradeComponent component = new GradeComponent(GradeComponentType.EXTRA_CREDIT, 0.0);
+        component.setWeight(1.0);
+        assertEquals(1.0, component.getWeight(), 1e-9);
+    }
+
+    @Test
+    public void testGradeComponentEqualsReflexiveAndDifferentTypes() {
+        // 验证成绩组件的相等性自反性及类型差异
+        GradeComponent assignment = new GradeComponent(GradeComponentType.ASSIGNMENT, 0.5);
+        assertEquals(assignment, assignment);
+        assertNotEquals(assignment, new Object());
+    }
 }
