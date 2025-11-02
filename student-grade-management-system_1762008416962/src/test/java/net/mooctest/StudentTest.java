@@ -1011,4 +1011,31 @@ public class StudentTest {
         } catch (DomainException expected) {
         }
     }
+
+    @Test
+    public void testEnrollmentAverageScoreWithZeroWeightComponentIgnored() {
+        // 验证权重为零的成绩组成不会改变最终平均分
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        enrollment.recordGrade(new GradeRecord(GradeComponentType.ASSIGNMENT, 90));
+        Map<GradeComponentType, GradeComponent> components = new EnumMap<>(GradeComponentType.class);
+        components.put(GradeComponentType.ASSIGNMENT, new GradeComponent(GradeComponentType.ASSIGNMENT, 0.5));
+        components.put(GradeComponentType.EXTRA_CREDIT, new GradeComponent(GradeComponentType.EXTRA_CREDIT, 0.0));
+        double average = enrollment.getAverageScore(components);
+        assertEquals(45.0, average, 1e-9);
+    }
+
+    @Test
+    public void testEnrollmentServiceDropUpdatesRepository() {
+        // 验证退课服务会将最新状态写回仓储
+        InMemoryStudentRepository studentRepository = new InMemoryStudentRepository();
+        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        EnrollmentService service = new EnrollmentService(studentRepository, courseRepository, enrollmentRepository, createStandardPolicy());
+
+        Student student = studentRepository.save(new Student("吴十", LocalDate.now().minusYears(19)));
+        Course course = courseRepository.save(new Course("CS700", "数据挖掘", 3));
+        Enrollment enrollment = service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+        service.drop(enrollment.getId());
+        assertEquals(EnrollmentStatus.DROPPED, enrollmentRepository.findById(enrollment.getId()).get().getStatus());
+    }
 }
