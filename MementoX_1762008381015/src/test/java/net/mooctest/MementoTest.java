@@ -158,7 +158,7 @@ public class MementoTest {
     }
 
     @Test
-    public void testCaretakerSaveAfterUndoDropsFuture() {
+    public void testCaretakerSaveAfterUndoDropsFuture() throws MementoException {
         // 场景：验证撤销后再次保存会丢弃未来分支。
         Caretaker caretaker = new Caretaker();
         NoteMemento m1 = new NoteMemento("A");
