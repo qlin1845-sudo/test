@@ -901,4 +901,34 @@ public class StudentTest {
         double average = enrollment.getAverageScore(components);
         assertEquals(0.0, average, 1e-9);
     }
+
+    @Test
+    public void testEnrollmentMarkIncompleteFromDroppedThrows() {
+        // 验证退课后的记录无法被标记为未完成
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        enrollment.drop();
+        try {
+            enrollment.markIncomplete();
+            fail("退课后标记未完成应抛出异常");
+        } catch (DomainException expected) {
+        }
+    }
+
+    @Test
+    public void testEnrollmentCompleteFromIncompleteSuccess() {
+        // 验证未完成状态仍可结课
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        enrollment.markIncomplete();
+        enrollment.complete();
+        assertEquals(EnrollmentStatus.COMPLETED, enrollment.getStatus());
+    }
+
+    @Test
+    public void testGradeRecordAllowsBoundaryScores() {
+        // 验证成绩记录在边界值时的赋值逻辑
+        GradeRecord record = new GradeRecord(GradeComponentType.MIDTERM, 0.0);
+        assertEquals(0.0, record.getScore(), 1e-9);
+        record.setScore(100.0);
+        assertEquals(100.0, record.getScore(), 1e-9);
+    }
 }
