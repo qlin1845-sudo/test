@@ -663,4 +663,102 @@ public class StudentTest {
         assertTrue(validationException instanceof DomainException);
         assertEquals("validation error", validationException.getMessage());
     }
+
+    @Test
+    public void testDomainExceptionWithCause() {
+        // 验证携带原因的领域异常能够正确保存原始异常
+        RuntimeException cause = new RuntimeException("root");
+        DomainException exception = new DomainException("with cause", cause);
+        assertEquals("with cause", exception.getMessage());
+        assertSame(cause, exception.getCause());
+    }
+
+    @Test
+    public void testTranscriptLineItemGetters() {
+        // 确认成绩单行条目的各个字段可正确读取
+        Transcript.LineItem item = new Transcript.LineItem("CS999", "测试课程", 5, 88.5, 3.3);
+        assertEquals("CS999", item.getCourseCode());
+        assertEquals("测试课程", item.getCourseTitle());
+        assertEquals(5, item.getCreditHours());
+        assertEquals(88.5, item.getPercentage(), 1e-9);
+        assertEquals(3.3, item.getGpaPoints(), 1e-9);
+    }
+
+    @Test
+    public void testCourseEqualsWithNull() {
+        // 验证课程对象与空比较时返回假
+        Course course = new Course("CS200", "算法", 3);
+        assertNotEquals(course, null);
+    }
+
+    @Test
+    public void testGradeComponentEqualsWithNull() {
+        // 验证成绩组成在与空对象比较时不会误判相等
+        GradeComponent component = new GradeComponent(GradeComponentType.EXTRA_CREDIT, 0.1);
+        assertNotEquals(component, null);
+    }
+
+    @Test
+    public void testEnrollmentEqualityAgainstNull() {
+        // 确认选课实体的相等性判断能够正确处理空值
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.WINTER);
+        assertNotEquals(enrollment, null);
+        assertNotEquals(enrollment, new Object());
+    }
+
+    @Test
+    public void testEnrollmentServiceDropMissingThrows() {
+        // 验证退课服务在找不到对应记录时抛出异常
+        InMemoryStudentRepository studentRepository = new InMemoryStudentRepository();
+        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        EnrollmentService enrollmentService = new EnrollmentService(studentRepository, courseRepository, enrollmentRepository, createStandardPolicy());
+        try {
+            enrollmentService.drop("missing");
+            fail("缺失的选课记录应当抛出异常");
+        } catch (DomainException expected) {
+        }
+    }
+
+    @Test
+    public void testGradingPolicyInternalCopy() {
+        // 验证评分策略会拷贝原始配置，避免外部修改影响内部状态
+        Map<GradeComponentType, GradeComponent> original = new EnumMap<>(GradeComponentType.class);
+        original.put(GradeComponentType.ASSIGNMENT, new GradeComponent(GradeComponentType.ASSIGNMENT, 0.4));
+        original.put(GradeComponentType.FINAL, new GradeComponent(GradeComponentType.FINAL, 0.6));
+        GradingPolicy policy = new GradingPolicy(original);
+        original.put(GradeComponentType.PROJECT, new GradeComponent(GradeComponentType.PROJECT, 0.1));
+        Map<GradeComponentType, GradeComponent> view = policy.getComponents();
+        assertEquals(2, view.size());
+        assertFalse(view.containsKey(GradeComponentType.PROJECT));
+    }
+
+    @Test
+    public void testInMemoryRepositoriesReturnCopies() {
+        // 确保内存仓储返回的集合副本不会影响内部存储
+        InMemoryCourseRepository courseRepo = new InMemoryCourseRepository();
+        Course course = courseRepo.save(new Course("CS300", "操作系统", 3));
+        List<Course> courseView = courseRepo.findAll();
+        courseView.clear();
+        assertEquals(1, courseRepo.findAll().size());
+
+        InMemoryStudentRepository studentRepo = new InMemoryStudentRepository();
+        Student student = studentRepo.save(new Student("赵六", LocalDate.now().minusYears(19)));
+        List<Student> studentView = studentRepo.findAll();
+        studentView.clear();
+        assertEquals(1, studentRepo.findAll().size());
+
+        InMemoryEnrollmentRepository enrollmentRepo = new InMemoryEnrollmentRepository();
+        Enrollment e1 = enrollmentRepo.save(new Enrollment(student.getId(), course.getId(), 2024, Term.SUMMER));
+        Enrollment e2 = enrollmentRepo.save(new Enrollment(student.getId(), "otherCourse", 2024, Term.SUMMER));
+        List<Enrollment> enrollmentView = enrollmentRepo.findAll();
+        enrollmentView.clear();
+        assertEquals(2, enrollmentRepo.findAll().size());
+        List<Enrollment> byStudent = enrollmentRepo.findByStudentId(student.getId());
+        byStudent.clear();
+        assertEquals(2, enrollmentRepo.findByStudentId(student.getId()).size());
+        List<Enrollment> byCourse = enrollmentRepo.findByCourseId(course.getId());
+        byCourse.clear();
+        assertEquals(1, enrollmentRepo.findByCourseId(course.getId()).size());
+    }
 }
