@@ -809,4 +809,96 @@ public class StudentTest {
         } catch (DomainException expected) {
         }
     }
+
+    @Test
+    public void testEnrollmentConstructorValidations() {
+        // 验证选课构造器在各种非法参数下的防御性校验
+        try {
+            new Enrollment(" ", "course", 2024, Term.SPRING);
+            fail("学生ID为空白应抛出异常");
+        } catch (ValidationException expected) {
+        }
+        try {
+            new Enrollment("stu", " ", 2024, Term.SPRING);
+            fail("课程ID为空白应抛出异常");
+        } catch (ValidationException expected) {
+        }
+        try {
+            new Enrollment("stu", "course", 0, Term.SPRING);
+            fail("年份非正应抛出异常");
+        } catch (ValidationException expected) {
+        }
+        try {
+            new Enrollment("stu", "course", 2024, null);
+            fail("学期为空应抛出异常");
+        } catch (ValidationException expected) {
+        }
+    }
+
+    @Test
+    public void testEnrollmentRecordGradeUpdatesSameComponent() {
+        // 确认同一成绩组成的重复录入会覆盖旧数据
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        GradeRecord first = new GradeRecord(GradeComponentType.ASSIGNMENT, 70.0);
+        GradeRecord second = new GradeRecord(GradeComponentType.ASSIGNMENT, 90.0);
+        enrollment.recordGrade(first);
+        enrollment.recordGrade(second);
+        Map<GradeComponentType, GradeRecord> stored = enrollment.getGradesByComponent();
+        assertEquals(1, stored.size());
+        assertSame(second, stored.get(GradeComponentType.ASSIGNMENT));
+    }
+
+    @Test
+    public void testGradeRecordConstructorValidation() {
+        // 验证成绩记录构造器对越界分数及空类型的校验
+        try {
+            new GradeRecord(null, 80.0);
+            fail("成绩组成为空应抛出异常");
+        } catch (ValidationException expected) {
+        }
+        try {
+            new GradeRecord(GradeComponentType.FINAL, -1.0);
+            fail("分数低于0应抛出异常");
+        } catch (ValidationException expected) {
+        }
+        try {
+            new GradeRecord(GradeComponentType.FINAL, 101.0);
+            fail("分数超过100应抛出异常");
+        } catch (ValidationException expected) {
+        }
+    }
+
+    @Test
+    public void testGradeRecordSetScoreUpperBound() {
+        // 验证设置分数超过100也会触发校验
+        GradeRecord record = new GradeRecord(GradeComponentType.QUIZ, 50.0);
+        try {
+            record.setScore(150.0);
+            fail("分数超过上限应抛出异常");
+        } catch (ValidationException expected) {
+        }
+    }
+
+    @Test
+    public void testEnrollmentGetAverageScoreWithPartialGrades() {
+        // 验证平均分计算在缺少部分成绩时仍按权重计算
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        enrollment.recordGrade(new GradeRecord(GradeComponentType.ASSIGNMENT, 80.0));
+        Map<GradeComponentType, GradeComponent> components = new EnumMap<>(GradeComponentType.class);
+        components.put(GradeComponentType.ASSIGNMENT, new GradeComponent(GradeComponentType.ASSIGNMENT, 0.3));
+        components.put(GradeComponentType.FINAL, new GradeComponent(GradeComponentType.FINAL, 0.7));
+        double average = enrollment.getAverageScore(components);
+        assertEquals(24.0, average, 1e-9);
+    }
+
+    @Test
+    public void testEnrollmentGetAverageScoreRequiresPositiveTotalWeight() {
+        // 验证平均分计算在权重大于零但存在多项时可正常工作
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        Map<GradeComponentType, GradeComponent> components = new EnumMap<>(GradeComponentType.class);
+        components.put(GradeComponentType.ASSIGNMENT, new GradeComponent(GradeComponentType.ASSIGNMENT, 0.3));
+        components.put(GradeComponentType.FINAL, new GradeComponent(GradeComponentType.FINAL, 0.7));
+        double average = enrollment.getAverageScore(components);
+        assertEquals(0.0, average, 1e-9);
+    }
 }
