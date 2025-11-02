@@ -1038,4 +1038,64 @@ public class StudentTest {
         service.drop(enrollment.getId());
         assertEquals(EnrollmentStatus.DROPPED, enrollmentRepository.findById(enrollment.getId()).get().getStatus());
     }
+
+    @Test
+    public void testEnrollmentMarkIncompleteAfterCompletionThrows() {
+        // 验证结课后的记录无法再标记为未完成
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        enrollment.complete();
+        try {
+            enrollment.markIncomplete();
+            fail("结课后标记未完成应抛出异常");
+        } catch (DomainException expected) {
+        }
+    }
+
+    @Test
+    public void testEnrollmentServiceDuplicateEnrollmentMessage() {
+        // 验证重复报名的异常信息包含关键字
+        InMemoryStudentRepository studentRepository = new InMemoryStudentRepository();
+        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        EnrollmentService service = new EnrollmentService(studentRepository, courseRepository, enrollmentRepository, createStandardPolicy());
+
+        Student student = studentRepository.save(new Student("郑十一", LocalDate.now().minusYears(19)));
+        Course course = courseRepository.save(new Course("CS800", "深度学习", 3));
+        service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+        try {
+            service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+            fail("重复报名应抛出异常");
+        } catch (DomainException ex) {
+            assertTrue(ex.getMessage().contains("已"));
+        }
+    }
+
+    @Test
+    public void testEnrollmentServiceStudentNotFoundMessage() {
+        // 验证找不到学生时的异常消息
+        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        EnrollmentService service = new EnrollmentService(new InMemoryStudentRepository(), courseRepository, enrollmentRepository, createStandardPolicy());
+        Course course = courseRepository.save(new Course("CS900", "并行计算", 3));
+        try {
+            service.enroll("missing", course.getId(), 2024, Term.SPRING);
+            fail("缺少学生应抛出异常");
+        } catch (DomainException ex) {
+            assertTrue(ex.getMessage().contains("Student not found"));
+        }
+    }
+
+    @Test
+    public void testEnrollmentServiceCourseNotFoundMessage() {
+        // 验证找不到课程时的异常消息
+        InMemoryStudentRepository studentRepository = new InMemoryStudentRepository();
+        EnrollmentService service = new EnrollmentService(studentRepository, new InMemoryCourseRepository(), new InMemoryEnrollmentRepository(), createStandardPolicy());
+        Student student = studentRepository.save(new Student("冯十二", LocalDate.now().minusYears(18)));
+        try {
+            service.enroll(student.getId(), "missing", 2024, Term.SPRING);
+            fail("缺少课程应抛出异常");
+        } catch (DomainException ex) {
+            assertTrue(ex.getMessage().contains("Course not found"));
+        }
+    }
 }
