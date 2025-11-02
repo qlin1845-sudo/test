@@ -976,4 +976,39 @@ public class StudentTest {
         assertEquals(assignment, assignment);
         assertNotEquals(assignment, new Object());
     }
+
+    @Test
+    public void testEnrollmentServiceBlocksDuplicateTermAndYearButAllowsAfterDrop() {
+        // 验证同一学期重复选课会被阻止，但退课后重新报名允许
+        InMemoryStudentRepository studentRepository = new InMemoryStudentRepository();
+        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        EnrollmentService service = new EnrollmentService(studentRepository, courseRepository, enrollmentRepository, createStandardPolicy());
+
+        Student student = studentRepository.save(new Student("周九", LocalDate.now().minusYears(20)));
+        Course course = courseRepository.save(new Course("CS600", "机器学习", 3));
+        Enrollment first = service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+        assertNotNull(first);
+        try {
+            service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+            fail("同一学期重复报名应抛出异常");
+        } catch (DomainException expected) {
+        }
+        enrollmentRepository.findById(first.getId()).get().drop();
+        enrollmentRepository.save(first);
+        Enrollment second = service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+        assertNotNull(second);
+    }
+
+    @Test
+    public void testEnrollmentCompleteAfterDropDisallowed() {
+        // 验证退课后的选课记录无法结课
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SUMMER);
+        enrollment.drop();
+        try {
+            enrollment.complete();
+            fail("退课后不允许结课");
+        } catch (DomainException expected) {
+        }
+    }
 }
