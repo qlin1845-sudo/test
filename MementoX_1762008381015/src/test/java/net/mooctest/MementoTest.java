@@ -83,6 +83,16 @@ public class MementoTest {
     }
 
     @Test
+    public void testCalendarManagerMonthWithoutNotes() throws Exception {
+        // 场景：验证查询无记录月份时返回空集合。
+        CalendarManager manager = new CalendarManager();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        manager.addNoteByDate(new Note("六月记录"), sdf.parse("2024-06-01"));
+        List<Note> julyNotes = manager.getNotesByMonth(sdf.parse("2024-07-15"));
+        assertTrue(julyNotes.isEmpty());
+    }
+
+    @Test
     public void testCalendarReminderBehaviors() {
         // 场景：验证提醒对象的防御性拷贝和触发标记。
         Note note = new Note("提醒内容");
@@ -265,6 +275,31 @@ public class MementoTest {
     }
 
     @Test
+    public void testHistoryManagerSwitchToEmptyBranchMaintainsState() throws Exception {
+        // 场景：验证切换到全新分支时不会回滚当前内容。
+        Note note = new Note("版本一");
+        HistoryManager manager = new HistoryManager(note);
+        note.setContent("版本二");
+        manager.save();
+        manager.createBranch("空分支");
+        manager.switchBranch("空分支");
+        assertEquals("空分支", manager.getCurrentBranch());
+        assertEquals("版本二", note.getContent());
+        manager.switchBranch("main");
+        assertEquals("main", manager.getCurrentBranch());
+        assertEquals("版本二", note.getContent());
+    }
+
+    @Test
+    public void testHistoryManagerCreateDuplicateBranch() throws Exception {
+        // 场景：验证重复创建同名分支不会产生副本。
+        HistoryManager manager = new HistoryManager(new Note("内容"));
+        int original = manager.getAllBranches().size();
+        manager.createBranch("main");
+        assertEquals(original, manager.getAllBranches().size());
+    }
+
+    @Test
     public void testLabelConstructionAndHierarchy() {
         // 场景：验证标签名称修整、层级路径以及子节点集合不可变。
         Label root = new Label(" 根 标签 ");
@@ -314,6 +349,16 @@ public class MementoTest {
     }
 
     @Test
+    public void testLabelChildrenAutoAttach() {
+        // 场景：验证多级标签时子节点会自动挂载到父级标签。
+        Label root = new Label("祖先");
+        Label parent = new Label("父级", root);
+        Label child = new Label("子级", parent);
+        assertTrue(parent.getChildren().contains(child));
+        assertTrue(child.getChildren().isEmpty());
+    }
+
+    @Test
     public void testLabelManagerAddRemove() {
         // 场景：验证标签与笔记的关联与解绑。
         LabelManager manager = new LabelManager();
@@ -340,6 +385,17 @@ public class MementoTest {
     }
 
     @Test
+    public void testLabelManagerRemoveNonExisting() {
+        // 场景：验证移除未关联标签时不会产生副作用。
+        LabelManager manager = new LabelManager();
+        Label label = new Label("孤立");
+        Note note = new Note("独立笔记");
+        manager.removeLabelFromNote(label, note);
+        assertTrue(manager.getNotesByLabel(label).isEmpty());
+        assertTrue(note.getLabels().isEmpty());
+    }
+
+    @Test
     public void testLabelSuggestionService() {
         // 场景：验证基于内容的标签推荐区分大小写。
         LabelSuggestionService service = new LabelSuggestionService();
@@ -352,12 +408,29 @@ public class MementoTest {
     }
 
     @Test
+    public void testLabelSuggestionServiceNoMatch() {
+        // 场景：验证内容不包含标签关键字时不会推荐。
+        LabelSuggestionService service = new LabelSuggestionService();
+        Note note = new Note("纯文本内容");
+        List<Label> labels = Arrays.asList(new Label("Java"));
+        assertTrue(service.suggestLabels(note, labels).isEmpty());
+    }
+
+    @Test
     public void testMementoExceptionConstructors() {
         // 场景：验证备忘录异常的消息与原因保持。
         Throwable cause = new IllegalStateException("根因");
         MementoException ex = new MementoException("提示", cause);
         assertEquals("提示", ex.getMessage());
         assertSame(cause, ex.getCause());
+    }
+
+    @Test
+    public void testMementoExceptionMessageOnly() {
+        // 场景：验证仅提供消息时的异常信息。
+        MementoException ex = new MementoException("单独提示");
+        assertEquals("单独提示", ex.getMessage());
+        assertNull(ex.getCause());
     }
 
     @Test
@@ -464,6 +537,15 @@ public class MementoTest {
     }
 
     @Test
+    public void testPermissionManagerNullPermissionIgnored() {
+        // 场景：验证忽略空权限授予请求。
+        PermissionManager manager = new PermissionManager();
+        User user = new User("忽略");
+        manager.grantPermission(user, null);
+        assertNull(manager.getPermission(user));
+    }
+
+    @Test
     public void testPluginManager() {
         // 场景：验证插件注册、不可变列表以及执行次数。
         PluginManager manager = new PluginManager();
@@ -559,6 +641,16 @@ public class MementoTest {
     }
 
     @Test
+    public void testSearchServiceNullKeywordAllUsers() {
+        // 场景：验证跨用户搜索在空关键字时返回空结果。
+        SearchService service = new SearchService();
+        User user = new User("单人");
+        user.addNote(new Note("任何内容"));
+        assertTrue(service.searchByKeywordAllUsers(Arrays.asList(user), null).isEmpty());
+        assertTrue(service.fuzzySearch(user, null).isEmpty());
+    }
+
+    @Test
     public void testStatisticsServiceLabelUsage() {
         // 场景：验证标签使用统计正确累加。
         StatisticsService service = new StatisticsService();
@@ -609,6 +701,14 @@ public class MementoTest {
         user.removeNote(note);
         assertTrue(user.getNotes().isEmpty());
         assertNull(user.getHistoryManager(note));
+    }
+
+    @Test
+    public void testUserAddNullNoteIgnored() {
+        // 场景：验证新增空笔记时会被忽略。
+        User user = new User("空值");
+        user.addNote(null);
+        assertTrue(user.getNotes().isEmpty());
     }
 
     @Test
