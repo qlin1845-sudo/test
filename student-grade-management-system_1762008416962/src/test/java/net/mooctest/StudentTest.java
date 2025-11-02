@@ -761,4 +761,52 @@ public class StudentTest {
         byCourse.clear();
         assertEquals(1, enrollmentRepo.findByCourseId(course.getId()).size());
     }
+
+    @Test
+    public void testEnrollmentServiceAllowsDifferentTermAndYear() {
+        // 验证同一课程在不同学期或学年仍然允许重新选课
+        InMemoryStudentRepository studentRepository = new InMemoryStudentRepository();
+        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        EnrollmentService service = new EnrollmentService(studentRepository, courseRepository, enrollmentRepository, createStandardPolicy());
+
+        Student student = studentRepository.save(new Student("钱七", LocalDate.now().minusYears(20)));
+        Course course = courseRepository.save(new Course("CS400", "编译原理", 3));
+
+        Enrollment spring = service.enroll(student.getId(), course.getId(), 2024, Term.SPRING);
+        Enrollment fall = service.enroll(student.getId(), course.getId(), 2024, Term.FALL);
+        Enrollment nextYear = service.enroll(student.getId(), course.getId(), 2025, Term.SPRING);
+
+        assertNotNull(spring);
+        assertNotNull(fall);
+        assertNotNull(nextYear);
+        assertEquals(3, enrollmentRepository.findAll().size());
+    }
+
+    @Test
+    public void testEnrollmentServiceComputePercentageMissing() {
+        // 验证计算百分比时若找不到选课会抛出异常
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        EnrollmentService service = new EnrollmentService(new InMemoryStudentRepository(), new InMemoryCourseRepository(), enrollmentRepository, createStandardPolicy());
+        try {
+            service.computeEnrollmentPercentage("missing");
+            fail("缺失的选课ID应抛出异常");
+        } catch (DomainException expected) {
+        }
+    }
+
+    @Test
+    public void testGradeServiceRecordGradeForDroppedEnrollment() {
+        // 验证成绩服务在退课后录入成绩会触发领域异常
+        InMemoryEnrollmentRepository enrollmentRepository = new InMemoryEnrollmentRepository();
+        GradeService gradeService = new GradeService(enrollmentRepository, createStandardPolicy());
+        Enrollment enrollment = new Enrollment("stu", "course", 2024, Term.SPRING);
+        enrollment.drop();
+        enrollmentRepository.save(enrollment);
+        try {
+            gradeService.recordGrade(enrollment.getId(), GradeComponentType.ASSIGNMENT, 80.0);
+            fail("退课后不应允许录入成绩");
+        } catch (DomainException expected) {
+        }
+    }
 }
