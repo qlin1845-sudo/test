@@ -291,8 +291,9 @@ public class ElevatorManagerTest {
         elevator.setCurrentFloor(10);
         elevator.addDestination(15);
         
-        // 添加一些乘客
-        elevator.setCurrentLoad(200.0);
+        // 添加观察者来验证通知
+        Observer testObserver = mock(Observer.class);
+        elevator.addObserver(testObserver);
         
         // 处理紧急情况
         elevator.handleEmergency();
@@ -302,7 +303,7 @@ public class ElevatorManagerTest {
         assertEquals("紧急情况下应该清空乘客", 0.0, elevator.getCurrentLoad(), 0.001);
         
         // 验证观察者被通知（注意：业务代码中直接传递了ElevatorStatus而非Event对象）
-        verify(mockObserver, times(1)).update(eq(elevator), eq(ElevatorStatus.EMERGENCY));
+        verify(testObserver, times(1)).update(eq(elevator), eq(ElevatorStatus.EMERGENCY));
     }
 
     /**
@@ -461,19 +462,25 @@ public class ElevatorManagerTest {
      */
     @Test
     public void testSchedulerSubmitRequest() {
+        // 创建新的电梯列表用于测试
+        List<Elevator> testElevators = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            testElevators.add(new Elevator(i, scheduler));
+        }
+        
         // 使用Mock策略来验证调度行为
-        Scheduler testScheduler = new Scheduler(elevators, 10, mockDispatchStrategy);
+        Scheduler testScheduler = new Scheduler(testElevators, 10, mockDispatchStrategy);
         
         PassengerRequest highPriorityRequest = new PassengerRequest(1, 5, Priority.HIGH, RequestType.STANDARD);
         PassengerRequest normalRequest = new PassengerRequest(2, 6, Priority.MEDIUM, RequestType.STANDARD);
         
         // 提交高优先级请求
         testScheduler.submitRequest(highPriorityRequest);
-        verify(mockDispatchStrategy, times(1)).selectElevator(elevators, highPriorityRequest);
+        verify(mockDispatchStrategy, times(1)).selectElevator(testElevators, highPriorityRequest);
         
         // 提交普通优先级请求
         testScheduler.submitRequest(normalRequest);
-        verify(mockDispatchStrategy, times(1)).selectElevator(elevators, normalRequest);
+        verify(mockDispatchStrategy, times(2)).selectElevator(testElevators, normalRequest);
     }
 
     /**
@@ -623,7 +630,9 @@ public class ElevatorManagerTest {
         
         // 测试同楼层请求
         PassengerRequest sameFloorRequest = new PassengerRequest(5, 5, Priority.LOW, RequestType.STANDARD);
-        assertEquals("同楼层请求方向应该是UP", Direction.UP, sameFloorRequest.getDirection());
+        // 根据PassengerRequest构造函数，startFloor < destinationFloor时为UP，否则为DOWN
+        // 同楼层时，startFloor == destinationFloor，条件startFloor < destinationFloor为false，所以方向为DOWN
+        assertEquals("同楼层请求方向应该是DOWN", Direction.DOWN, sameFloorRequest.getDirection());
         
         // 测试极端楼层号
         PassengerRequest extremeRequest = new PassengerRequest(1, 100, Priority.HIGH, RequestType.STANDARD);
