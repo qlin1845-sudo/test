@@ -14,6 +14,11 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.Observable;
+import java.util.Observer;
+
+// 导入所有业务类
+import net.mooctest.*;
 
 /**
  * 电梯系统综合测试类
@@ -42,13 +47,16 @@ public class ElevatorManagerTest {
         systemConfig = SystemConfig.getInstance();
         systemConfig.setMaxLoad(800.0);
         
+        // 初始化调度器
+        scheduler = Scheduler.getInstance(new ArrayList<>(), 10, new NearestElevatorStrategy());
+        
         // 初始化测试电梯
         elevators = new ArrayList<>();
         for (int i = 1; i <= 3; i++) {
-            elevators.add(new Elevator(i, null));
+            elevators.add(new Elevator(i, scheduler));
         }
         
-        // 初始化调度器
+        // 更新调度器的电梯列表
         scheduler = Scheduler.getInstance(elevators, 10, new NearestElevatorStrategy());
         
         // 初始化电梯管理器
@@ -57,7 +65,6 @@ public class ElevatorManagerTest {
         // 注册电梯到管理器
         for (Elevator elevator : elevators) {
             elevatorManager.registerElevator(elevator);
-            elevator.setScheduler(scheduler);
             elevator.addObserver(mockObserver);
         }
     }
@@ -101,7 +108,7 @@ public class ElevatorManagerTest {
         
         // 测试带参数的单例创建
         List<Elevator> newList = new ArrayList<>();
-        newList.add(new Elevator(1, null));
+        newList.add(new Elevator(1, Scheduler.getInstance()));
         Scheduler instance3 = Scheduler.getInstance(newList, 5, new HighEfficiencyStrategy());
         
         assertNotNull("应该能创建带参数的Scheduler实例", instance3);
@@ -294,7 +301,7 @@ public class ElevatorManagerTest {
         assertEquals("紧急情况下应该只有1楼作为目标", Collections.singleton(1), elevator.getDestinationSet());
         assertEquals("紧急情况下应该清空乘客", 0.0, elevator.getCurrentLoad(), 0.001);
         
-        // 验证观察者被通知
+        // 验证观察者被通知（注意：业务代码中直接传递了ElevatorStatus而非Event对象）
         verify(mockObserver, times(1)).update(eq(elevator), eq(ElevatorStatus.EMERGENCY));
     }
 
