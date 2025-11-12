@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuite tests="1" failures="0" name="net.mooctest.ElevatorManagerTest" time="0.035" errors="0" skipped="0">
+<testsuite tests="26" failures="0" name="net.mooctest.AStarTest" time="0.026" errors="0" skipped="0">
   <properties>
-    <property name="jansi.mode" value="strip"/>
+    <property name="jansi.mode" value="force"/>
     <property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
     <property name="java.vm.version" value="11.0.28+6-post-Ubuntu-1ubuntu124.04.1"/>
     <property name="sun.boot.library.path" value="/usr/lib/jvm/java-11-openjdk-amd64/lib"/>
-    <property name="maven.multiModuleProjectDirectory" value="/home/engine/project/ElevatorManager_1732926949563"/>
+    <property name="maven.multiModuleProjectDirectory" value="/home/engine/project/PathFinding_1731801257496"/>
     <property name="java.vm.vendor" value="Ubuntu"/>
     <property name="java.vendor.url" value="https://ubuntu.com/"/>
     <property name="guice.disable.misplaced.annotation.check" value="true"/>
@@ -15,7 +15,7 @@
     <property name="user.country" value="US"/>
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
-    <property name="user.dir" value="/home/engine/project/ElevatorManager_1732926949563"/>
+    <property name="user.dir" value="/home/engine/project/PathFinding_1731801257496"/>
     <property name="java.vm.compressedOopsMode" value="32-bit"/>
     <property name="java.runtime.version" value="11.0.28+6-post-Ubuntu-1ubuntu124.04.1"/>
     <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment"/>
@@ -42,9 +42,10 @@
     <property name="java.specification.version" value="11"/>
     <property name="user.name" value="engine"/>
     <property name="java.class.path" value="/usr/share/maven/boot/plexus-classworlds-2.x.jar"/>
+    <property name="org.slf4j.simpleLogger.defaultLogLevel" value="error"/>
     <property name="java.vm.specification.version" value="11"/>
     <property name="sun.arch.data.model" value="64"/>
-    <property name="sun.java.command" value="org.codehaus.plexus.classworlds.launcher.Launcher -B clean test"/>
+    <property name="sun.java.command" value="org.codehaus.plexus.classworlds.launcher.Launcher -q test jacoco:report"/>
     <property name="java.home" value="/usr/lib/jvm/java-11-openjdk-amd64"/>
     <property name="user.language" value="en"/>
     <property name="java.specification.vendor" value="Oracle Corporation"/>
@@ -61,5 +62,30 @@
     <property name="sun.cpu.endian" value="little"/>
     <property name="sun.cpu.isalist" value=""/>
   </properties>
-  <testcase classname="net.mooctest.ElevatorManagerTest" name="test" time="0.035"/>
+  <testcase classname="net.mooctest.AStarTest" name="testNodes_扩容边界覆盖" time="0.006"/>
+  <testcase classname="net.mooctest.AStarTest" name="testFillPath_平滑与非平滑分支行为" time="0.007"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_逆向水平竖直" time="0.001"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_负向对角遍历" time="0.001"/>
+  <testcase classname="net.mooctest.AStarTest" name="testPath_扩容分支覆盖" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testSearch_无法拓展时直接结束" time="0.003"/>
+  <testcase classname="net.mooctest.AStarTest" name="testNodes_堆扩容与上下滤操作" time="0.001"/>
+  <testcase classname="net.mooctest.AStarTest" name="testUtils_校验与位掩码边界" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_多场景判定最近可行点" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_对角邻居阻断" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testGrid_状态位操作覆盖" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_整数斜率直达" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testSearch_复杂路径触发方向切换和平滑" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testFillPath_八方向覆盖" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testSearch_无障碍平滑路径得到起终点" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_纵向下降遍历" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testSearch_异常场景直接返回空路径" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testNodeAndPath_编码与异常处理" time="0.001"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_围栏与缩放异常" time="0.002"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_围栏中途阻断" time="0.001"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_围栏保持放行" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_斜率和穿越分支" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_非整数斜率阻断" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testOpen_方向和状态判断确保不重复入堆" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testReachability_围栏阻断终点回退" time="0"/>
+  <testcase classname="net.mooctest.AStarTest" name="testThreadLocalAStar_线程隔离" time="0.003"/>
 </testsuite>

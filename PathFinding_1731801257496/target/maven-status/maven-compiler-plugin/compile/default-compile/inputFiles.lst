@@ -4,8 +4,8 @@
 /home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/ThreadLocalAStar.java
 /home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/Node.java
 /home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/Nodes.java
-/home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/AStar.java
 /home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/Point.java
+/home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/AStar.java
 /home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/Fence.java
 /home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/Utils.java
 /home/engine/project/PathFinding_1731801257496/src/main/java/net/mooctest/TooLongPathException.java

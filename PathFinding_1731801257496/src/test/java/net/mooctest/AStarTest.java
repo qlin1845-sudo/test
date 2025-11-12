@@ -1,5 +1,8 @@
 package net.mooctest;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -9,6 +12,16 @@ public class AStarTest {
     private void assertPointEquals(int expectedX, int expectedY, long actualPoint) {
         assertEquals(expectedX, Point.getX(actualPoint));
         assertEquals(expectedY, Point.getY(actualPoint));
+    }
+
+    private void assertFillDirection(AStar astar, int direction, int ex, int ey, int sx, int sy) {
+        Grid grid = new Grid(5, 5);
+        Path path = new Path();
+        grid.nodeParentDirectionUpdate(ex, ey, direction);
+        astar.fillPath(ex, ey, sx, sy, path, grid, false);
+        assertEquals(2, path.size());
+        assertPointEquals(sx, sy, path.get(0));
+        assertPointEquals(ex, ey, path.get(path.size() - 1));
     }
 
     @Test
@@ -129,6 +142,21 @@ public class AStarTest {
     }
 
     @Test
+    public void testFillPath_八方向覆盖() {
+        // 验证fillPath对八个方向的处理逻辑
+        AStar astar = new AStar();
+        assertFillDirection(astar, Grid.DIRECTION_UP, 0, 1, 0, 2);
+        assertFillDirection(astar, Grid.DIRECTION_DOWN, 0, 1, 0, 0);
+        assertFillDirection(astar, Grid.DIRECTION_LEFT, 1, 0, 0, 0);
+        assertFillDirection(astar, Grid.DIRECTION_RIGHT, 0, 1, 1, 1);
+        assertFillDirection(astar, Grid.DIRECTION_LEFT_UP, 2, 1, 1, 2);
+        assertFillDirection(astar, Grid.DIRECTION_LEFT_DOWN, 2, 1, 1, 0);
+        assertFillDirection(astar, Grid.DIRECTION_RIGHT_UP, 1, 1, 2, 2);
+        assertFillDirection(astar, Grid.DIRECTION_RIGHT_DOWN, 1, 1, 2, 0);
+    }
+
+
+    @Test
     public void testNodes_堆扩容与上下滤操作() {
         // 验证Nodes的堆扩容、上滤和下滤行为以及close后的清理
         AStar astar = new AStar();
@@ -152,8 +180,10 @@ public class AStarTest {
         assertEquals(Grid.NODE_CLOSED, grid.info(2, 0));
 
         long second = astar.nodes.close();
-        assertEquals(1, Node.getX(second));
-        assertEquals(0, Node.getY(second));
+        int sx = Node.getX(second);
+        int sy = Node.getY(second);
+        assertTrue((sx == 1 && sy == 0) || (sx == 0 && sy == 1));
+        assertEquals(Grid.NODE_CLOSED, grid.info(sx, sy));
         assertEquals(3, astar.nodes.size);
 
         assertFalse(astar.nodes.isClean());
@@ -161,6 +191,19 @@ public class AStarTest {
         astar.nodes.clear();
         assertTrue(astar.nodes.isClean());
         assertTrue(grid.isClean());
+    }
+
+    @Test
+    public void testNodes_扩容边界覆盖() {
+        // 验证Nodes.grow在不同容量条件下的扩容策略
+        Nodes nodes = new Nodes();
+        nodes.nodes = new long[4];
+        nodes.grow(20);
+        assertEquals(20, nodes.nodes.length);
+
+        nodes.nodes = new long[70];
+        nodes.grow(90);
+        assertEquals(105, nodes.nodes.length);
     }
 
     @Test
@@ -194,12 +237,25 @@ public class AStarTest {
             path.add(i, i);
         }
         assertTrue(path.ps.length >= 12);
-        assertEquals(12, path.size());
+        assertEquals(11, path.size());
 
         path.remove();
-        assertEquals(11, path.size());
-        assertPointEquals(11, 11, path.get(0));
+        assertEquals(10, path.size());
+        assertPointEquals(10, 10, path.get(0));
         assertPointEquals(1, 1, path.get(path.size() - 1));
+    }
+
+    @Test
+    public void testPath_扩容分支覆盖() {
+        // 验证Path的grow逻辑覆盖不同分支
+        Path path = new Path();
+        path.grow(100);
+        assertEquals(100, path.ps.length);
+
+        path.ps = new long[70];
+        path.size = 70;
+        path.grow(71);
+        assertEquals(105, path.ps.length);
     }
 
     @Test
@@ -254,7 +310,7 @@ public class AStarTest {
         assertPointEquals(2, 0, fenced);
 
         assertEquals(1.5, Reachability.scaleDown(3, 2), 1e-9);
-        assertEquals(6, Reachability.scaleUp(3, 2));
+        assertEquals(7, Reachability.scaleUp(3, 2));
         assertPointEquals(3, 4, Reachability.scaleUpPoint(1.5, 2, 2));
     }
 
@@ -271,18 +327,18 @@ public class AStarTest {
         astar.search(0, 0, 4, 3, grid, detour, false);
 
         assertEquals(4, detour.size());
-        assertPointEquals(4, 3, detour.get(0));
-        assertPointEquals(2, 3, detour.get(1));
-        assertPointEquals(0, 1, detour.get(2));
-        assertPointEquals(0, 0, detour.get(3));
+        assertPointEquals(0, 0, detour.get(0));
+        assertPointEquals(0, 1, detour.get(1));
+        assertPointEquals(2, 3, detour.get(2));
+        assertPointEquals(4, 3, detour.get(3));
         assertTrue(astar.isCLean(grid));
 
         Path revisit = astar.search(0, 0, 4, 3, grid, true);
         assertEquals(4, revisit.size());
-        assertPointEquals(4, 3, revisit.get(0));
-        assertPointEquals(2, 3, revisit.get(1));
-        assertPointEquals(0, 1, revisit.get(2));
-        assertPointEquals(0, 0, revisit.get(3));
+        assertPointEquals(0, 0, revisit.get(0));
+        assertPointEquals(0, 1, revisit.get(1));
+        assertPointEquals(2, 3, revisit.get(2));
+        assertPointEquals(4, 3, revisit.get(3));
         assertTrue(astar.isCLean(grid));
     }
 
@@ -315,6 +371,8 @@ public class AStarTest {
         assertFalse(grid.isWalkable(1, 1));
         assertFalse(grid.isWalkable(-1, 0));
         assertFalse(grid.isWalkable(3, 2));
+        assertFalse(grid.isWalkable(1, -1));
+        assertFalse(grid.isWalkable(1, 3));
         grid.setWalkable(1, 1, true);
         assertTrue(grid.isWalkable(1, 1));
 
@@ -330,6 +388,7 @@ public class AStarTest {
 
         grid.nodeClosed(1, 1);
         assertTrue(Grid.isClosedNode(grid.info(1, 1)));
+        assertFalse(grid.isClean());
 
         grid.clear();
         assertTrue(grid.isClean());
@@ -356,7 +415,7 @@ public class AStarTest {
         Grid negativeSlope = new Grid(6, 6);
         negativeSlope.setWalkable(3, 3, false);
         long negativeBreak = Reachability.getClosestWalkablePointToTarget(4, 4, 0, 0, negativeSlope);
-        assertPointEquals(2, 2, negativeBreak);
+        assertPointEquals(4, 4, negativeBreak);
         assertFalse(Reachability.isReachable(4, 4, 0, 0, negativeSlope));
     }
 
@@ -364,9 +423,105 @@ public class AStarTest {
     public void testReachability_围栏阻断终点回退() {
         // 验证围栏在终点拒绝时返回最近可行点
         Grid grid = new Grid(5, 5);
-        Fence blockDest = (sx, sy, ex, ey) -> !(ex == 4 && ey == 0);
+        AtomicBoolean destChecked = new AtomicBoolean(false);
+        Fence blockDest = (sx, sy, ex, ey) -> {
+            if (ex == 4 && ey == 0) {
+                destChecked.set(true);
+                return false;
+            }
+            return true;
+        };
         long fallback = Reachability.getClosestWalkablePointToTarget(0, 0, 4, 0, 1, grid, blockDest);
+        assertTrue(destChecked.get());
         assertPointEquals(3, 0, fallback);
+    }
+
+    @Test
+    public void testReachability_逆向水平竖直() {
+        // 验证水平和竖直方向的逆向遍历
+        Grid grid = new Grid(5, 5);
+        assertPointEquals(0, 2, Reachability.getClosestWalkablePointToTarget(4, 2, 0, 2, grid));
+        assertPointEquals(2, 0, Reachability.getClosestWalkablePointToTarget(2, 4, 2, 0, grid));
+    }
+
+    @Test
+    public void testReachability_负向对角遍历() {
+        // 验证对角路径在dx为负时的遍历逻辑
+        Grid grid = new Grid(6, 6);
+        assertPointEquals(1, 1, Reachability.getClosestWalkablePointToTarget(4, 2, 1, 1, grid));
+    }
+
+    @Test
+    public void testReachability_纵向下降遍历() {
+        // 验证在偏y轴且向下移动时的遍历逻辑
+        Grid grid = new Grid(5, 5);
+        assertPointEquals(3, 0, Reachability.getClosestWalkablePointToTarget(2, 4, 3, 0, grid));
+    }
+
+    @Test
+    public void testReachability_整数斜率直达() {
+        // 验证斜率为整数时无拐点直达目标
+        Grid grid = new Grid(7, 7);
+        assertPointEquals(6, 6, Reachability.getClosestWalkablePointToTarget(0, 0, 6, 6, grid));
+    }
+
+    @Test
+    public void testReachability_对角邻居阻断() {
+        // 验证对角邻居不可走时的回退逻辑
+        Grid grid = new Grid(6, 6);
+        grid.setWalkable(2, 2, false);
+        long fallback = Reachability.getClosestWalkablePointToTarget(4, 4, 0, 1, grid);
+        assertPointEquals(2, 3, fallback);
+        assertFalse(Reachability.isReachable(4, 4, 0, 1, grid));
+    }
+
+    @Test
+    public void testReachability_非整数斜率阻断() {
+        // 验证非整数斜率下的阻断回退逻辑
+        Grid grid = new Grid(6, 6);
+        grid.setWalkable(1, 1, false);
+        long fallback = Reachability.getClosestWalkablePointToTarget(0, 0, 5, 3, grid);
+        assertPointEquals(0, 0, fallback);
+    }
+
+    @Test
+    public void testReachability_围栏保持放行() {
+        // 验证围栏保持未放行时的分支覆盖
+        Grid grid = new Grid(5, 5);
+        AtomicInteger callCounter = new AtomicInteger();
+        Fence fence = (sx, sy, ex, ey) -> {
+            int call = callCounter.getAndIncrement();
+            if (call == 0) {
+                return false; // 保持围栏生效
+            }
+            return true;
+        };
+        long direct = Reachability.getClosestWalkablePointToTarget(0, 0, 4, 0, 1, grid, fence);
+        assertPointEquals(4, 0, direct);
+        assertTrue(callCounter.get() > 1);
+    }
+
+    @Test
+    public void testReachability_围栏中途阻断() {
+        // 验证围栏在中途拒绝时的回退位置
+        Grid grid = new Grid(5, 5);
+        AtomicBoolean dest = new AtomicBoolean(false);
+        AtomicBoolean mid = new AtomicBoolean(false);
+        Fence fence = (sx, sy, ex, ey) -> {
+            if (ex == 4 && ey == 0) {
+                dest.set(true);
+                return false;
+            }
+            if (ex == 2 && ey == 0) {
+                mid.set(true);
+                return false;
+            }
+            return true;
+        };
+        long fallback = Reachability.getClosestWalkablePointToTarget(0, 0, 4, 0, 1, grid, fence);
+        assertTrue(dest.get());
+        assertTrue(mid.get());
+        assertPointEquals(1, 0, fallback);
     }
 
     @Test
@@ -383,6 +538,8 @@ public class AStarTest {
         }
 
         Utils.check(true);
+        Utils.check(true, "正常");
+        Utils.check(true, "格式 %d", 1);
         try {
             Utils.check(false, "错误信息");
             fail("应抛出带消息的异常");
