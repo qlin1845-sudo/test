@@ -21,8 +21,8 @@ ElevatorManager,net.mooctest,AnalyticsEngine,69,0,6,0,18,0,9,0,6,0
 ElevatorManager,net.mooctest,ElevatorStatus,64,0,0,0,2,0,1,0,1,0
 ElevatorManager,net.mooctest,NotificationService.Notification,21,0,0,0,8,0,4,0,4,0
 ElevatorManager,net.mooctest,MaintenanceManager.MaintenanceTask,21,0,0,0,8,0,4,0,4,0
-ElevatorManager,net.mooctest,Event,15,0,0,0,6,0,3,0,3,0
 ElevatorManager,net.mooctest,PassengerRequest,82,0,2,0,18,0,10,0,9,0
+ElevatorManager,net.mooctest,Event,15,0,0,0,6,0,3,0,3,0
 ElevatorManager,net.mooctest,EnergySavingStrategy,48,0,10,0,11,0,7,0,2,0
 ElevatorManager,net.mooctest,NotificationService.EmailChannel,22,0,0,0,4,0,3,0,3,0
 ElevatorManager,net.mooctest,SpecialNeeds,44,0,0,0,2,0,1,0,1,0
@@ -32,6 +32,6 @@ ElevatorManager,net.mooctest,SystemConfig,58,0,10,0,23,0,13,0,8,0
 ElevatorManager,net.mooctest,NotificationService.NotificationType,44,0,0,0,2,0,1,0,1,0
 ElevatorManager,net.mooctest,ElevatorStatusReport,90,0,0,0,18,0,9,0,9,0
 ElevatorManager,net.mooctest,NotificationService,60,0,8,0,16,0,7,0,3,0
-ElevatorManager,net.mooctest,ElevatorMode,34,0,0,0,2,0,1,0,1,0
-ElevatorManager,net.mooctest,NotificationService.SMSChannel,30,0,4,0,4,0,5,0,3,0
 ElevatorManager,net.mooctest,Direction,24,0,0,0,2,0,1,0,1,0
+ElevatorManager,net.mooctest,NotificationService.SMSChannel,30,0,4,0,4,0,5,0,3,0
+ElevatorManager,net.mooctest,ElevatorMode,34,0,0,0,2,0,1,0,1,0

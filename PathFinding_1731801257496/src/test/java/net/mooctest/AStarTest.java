@@ -259,6 +259,117 @@ public class AStarTest {
     }
 
     @Test
+    public void testSearch_复杂路径触发方向切换和平滑() {
+        // 验证绕障碍路径时方向切换与平滑填充行为
+        Grid grid = new Grid(5, 5);
+        grid.setWalkable(1, 0, false);
+        grid.setWalkable(1, 1, false);
+        grid.setWalkable(2, 1, false);
+
+        AStar astar = new AStar();
+        Path detour = new Path();
+        astar.search(0, 0, 4, 3, grid, detour, false);
+
+        assertEquals(4, detour.size());
+        assertPointEquals(4, 3, detour.get(0));
+        assertPointEquals(2, 3, detour.get(1));
+        assertPointEquals(0, 1, detour.get(2));
+        assertPointEquals(0, 0, detour.get(3));
+        assertTrue(astar.isCLean(grid));
+
+        Path revisit = astar.search(0, 0, 4, 3, grid, true);
+        assertEquals(4, revisit.size());
+        assertPointEquals(4, 3, revisit.get(0));
+        assertPointEquals(2, 3, revisit.get(1));
+        assertPointEquals(0, 1, revisit.get(2));
+        assertPointEquals(0, 0, revisit.get(3));
+        assertTrue(astar.isCLean(grid));
+    }
+
+    @Test
+    public void testSearch_无法拓展时直接结束() {
+        // 验证无法拓展节点时循环立即结束并且状态被清理
+        Grid grid = new Grid(3, 3);
+        for (int x = 0; x < 3; x++) {
+            for (int y = 0; y < 3; y++) {
+                grid.setWalkable(x, y, false);
+            }
+        }
+        grid.setWalkable(0, 0, true);
+        grid.setWalkable(2, 2, true);
+
+        AStar astar = new AStar();
+        Path noRoute = new Path();
+        astar.search(0, 0, 2, 2, grid, noRoute, false);
+
+        assertTrue(noRoute.isEmpty());
+        assertTrue(astar.isCLean(grid));
+    }
+
+    @Test
+    public void testGrid_状态位操作覆盖() {
+        // 验证网格内部位运算辅助方法覆盖各种分支
+        Grid grid = new Grid(3, 3);
+        assertTrue(grid.isWalkable(1, 1));
+        grid.setWalkable(1, 1, false);
+        assertFalse(grid.isWalkable(1, 1));
+        assertFalse(grid.isWalkable(-1, 0));
+        assertFalse(grid.isWalkable(3, 2));
+        grid.setWalkable(1, 1, true);
+        assertTrue(grid.isWalkable(1, 1));
+
+        int infoBefore = grid.info(1, 1);
+        assertTrue(Grid.isNullNode(infoBefore));
+
+        grid.openNodeIdxUpdate(1, 1, 7);
+        int info = grid.info(1, 1);
+        assertEquals(7, Grid.openNodeIdx(info));
+
+        grid.nodeParentDirectionUpdate(1, 1, Grid.DIRECTION_RIGHT_UP);
+        assertEquals(Grid.DIRECTION_RIGHT_UP, grid.nodeParentDirection(1, 1));
+
+        grid.nodeClosed(1, 1);
+        assertTrue(Grid.isClosedNode(grid.info(1, 1)));
+
+        grid.clear();
+        assertTrue(grid.isClean());
+
+        grid.setWalkable(2, 2, false);
+        assertTrue(Grid.isUnwalkable(grid.info(2, 2)));
+        grid.setWalkable(2, 2, true);
+    }
+
+    @Test
+    public void testReachability_斜率和穿越分支() {
+        // 验证斜线穿越与起点不可行走等分支
+        Grid blockedStart = new Grid(3, 3);
+        blockedStart.setWalkable(0, 0, false);
+        long stay = Reachability.getClosestWalkablePointToTarget(0, 0, 2, 2, blockedStart);
+        assertPointEquals(0, 0, stay);
+
+        Grid positiveSlope = new Grid(6, 6);
+        positiveSlope.setWalkable(3, 1, false);
+        long positiveBreak = Reachability.getClosestWalkablePointToTarget(0, 0, 5, 3, positiveSlope);
+        assertPointEquals(2, 1, positiveBreak);
+        assertFalse(Reachability.isReachable(0, 0, 5, 3, positiveSlope));
+
+        Grid negativeSlope = new Grid(6, 6);
+        negativeSlope.setWalkable(3, 3, false);
+        long negativeBreak = Reachability.getClosestWalkablePointToTarget(4, 4, 0, 0, negativeSlope);
+        assertPointEquals(2, 2, negativeBreak);
+        assertFalse(Reachability.isReachable(4, 4, 0, 0, negativeSlope));
+    }
+
+    @Test
+    public void testReachability_围栏阻断终点回退() {
+        // 验证围栏在终点拒绝时返回最近可行点
+        Grid grid = new Grid(5, 5);
+        Fence blockDest = (sx, sy, ex, ey) -> !(ex == 4 && ey == 0);
+        long fallback = Reachability.getClosestWalkablePointToTarget(0, 0, 4, 0, 1, grid, blockDest);
+        assertPointEquals(3, 0, fallback);
+    }
+
+    @Test
     public void testUtils_校验与位掩码边界() {
         // 验证工具类的校验方法及掩码计算边界情况
         assertEquals(-1, Utils.mask(32));
