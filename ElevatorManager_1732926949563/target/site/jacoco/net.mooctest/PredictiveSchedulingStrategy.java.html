@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PredictiveSchedulingStrategy.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">ElevatorManager</a> &gt; <a href="index.source.html" class="el_package">net.mooctest</a> &gt; <span class="el_source">PredictiveSchedulingStrategy.java</span></div><h1>PredictiveSchedulingStrategy.java</h1><pre class="source lang-java linenums">package net.mooctest;
+
+import java.util.List;
+
+<span class="nc" id="L5">public class PredictiveSchedulingStrategy implements DispatchStrategy {</span>
+
+    @Override
+    public Elevator selectElevator(List&lt;Elevator&gt; elevators, PassengerRequest request) {
+        // 预测需求，并选择最适合的电梯
+<span class="nc" id="L10">        Elevator bestElevator = null;</span>
+<span class="nc" id="L11">        double lowestPredictedCost = Double.MAX_VALUE;</span>
+
+<span class="nc bnc" id="L13" title="All 2 branches missed.">        for (Elevator elevator : elevators) {</span>
+<span class="nc" id="L14">            double predictedCost = calculatePredictedCost(elevator, request);</span>
+
+<span class="nc bnc" id="L16" title="All 2 branches missed.">            if (predictedCost &lt; lowestPredictedCost) {</span>
+<span class="nc" id="L17">                lowestPredictedCost = predictedCost;</span>
+<span class="nc" id="L18">                bestElevator = elevator;</span>
+            }
+<span class="nc" id="L20">        }</span>
+
+<span class="nc" id="L22">        return bestElevator;</span>
+    }
+
+    public double calculatePredictedCost(Elevator elevator, PassengerRequest request) {
+<span class="nc" id="L26">        int distance = Math.abs(elevator.getCurrentFloor() - request.getStartFloor());</span>
+<span class="nc" id="L27">        double loadFactor = elevator.getPassengerList().size() / elevator.getMaxLoad();</span>
+
+<span class="nc" id="L29">        return distance + loadFactor * 10; // 简化预测公式</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
