@@ -34,12 +34,12 @@ public class Scheduler implements Observer {
     }
 
     public static Scheduler getInstance() {
-<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        if (instance == null) {</span>
-<span class="nc" id="L38">            synchronized (Scheduler.class) {</span>
-<span class="nc bnc" id="L39" title="All 2 branches missed.">                if (instance == null) {</span>
-<span class="nc" id="L40">                    instance = new Scheduler(new ArrayList&lt;&gt;(), 0, new NearestElevatorStrategy());</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        if (instance == null) {</span>
+<span class="fc" id="L38">            synchronized (Scheduler.class) {</span>
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">                if (instance == null) {</span>
+<span class="fc" id="L40">                    instance = new Scheduler(new ArrayList&lt;&gt;(), 0, new NearestElevatorStrategy());</span>
                 }
-<span class="nc" id="L42">            }</span>
+<span class="fc" id="L42">            }</span>
         }
 <span class="fc" id="L44">        return instance;</span>
     }

@@ -12,7 +12,7 @@ public class EventBus {
 <span class="fc" id="L12">    }</span>
 
     public static EventBus getInstance() {
-<span class="pc bpc" id="L15" title="1 of 2 branches missed.">        if (instance == null) {</span>
+<span class="fc bfc" id="L15" title="All 2 branches covered.">        if (instance == null) {</span>
 <span class="fc" id="L16">            synchronized (EventBus.class) {</span>
 <span class="pc bpc" id="L17" title="1 of 2 branches missed.">                if (instance == null) {</span>
 <span class="fc" id="L18">                    instance = new EventBus();</span>

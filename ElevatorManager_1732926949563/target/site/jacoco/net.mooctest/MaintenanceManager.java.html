@@ -44,16 +44,16 @@ public class MaintenanceManager implements EventBus.EventListener {
     public void processTasks() {
         while (true) {
 <span class="fc" id="L46">            MaintenanceTask task = taskQueue.poll();</span>
-<span class="pc bpc" id="L47" title="1 of 2 branches missed.">            if (task != null) {</span>
-<span class="nc" id="L48">                performMaintenance(task);</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">            if (task != null) {</span>
+<span class="fc" id="L48">                performMaintenance(task);</span>
             }
             try {
-<span class="nc" id="L51">                Thread.sleep(1000); // Sleep to reduce busy waiting</span>
+<span class="fc" id="L51">                Thread.sleep(1000); // Sleep to reduce busy waiting</span>
 <span class="fc" id="L52">            } catch (InterruptedException e) {</span>
 <span class="fc" id="L53">                Thread.currentThread().interrupt();</span>
 <span class="fc" id="L54">                break;</span>
-<span class="nc" id="L55">            }</span>
-<span class="nc" id="L56">        }</span>
+<span class="fc" id="L55">            }</span>
+<span class="fc" id="L56">        }</span>
 <span class="fc" id="L57">    }</span>
 
     public void performMaintenance(MaintenanceTask task) {

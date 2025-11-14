@@ -20,6 +20,7 @@ import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -30,6 +31,7 @@ public class ElevatorManagerTest {
     @Before
     public void resetSingletons() throws Exception {
         // 统一重置所有单例，保证各测试之间互不干扰
+        Thread.interrupted();
         resetSingleton(AnalyticsEngine.class);
         resetSingleton(ElevatorManager.class);
         resetSingleton(EventBus.class);
@@ -195,6 +197,44 @@ public class ElevatorManagerTest {
         }
     }
 
+    private static class InterruptingExecutor extends AbstractExecutorService {
+        private boolean shutdownCalled;
+        private boolean shutdownNowCalled;
+
+        @Override
+        public void shutdown() {
+            shutdownCalled = true;
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdownNowCalled = true;
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return shutdownCalled;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return shutdownNowCalled;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            throw new InterruptedException("test");
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            if (command != null) {
+                command.run();
+            }
+        }
+    }
+
     private Elevator createElevator(int id, int floor, Direction direction, ElevatorStatus status) {
         Scheduler scheduler = new Scheduler(new ArrayList<>(), 20, (elevators, request) -> null);
         Elevator elevator = new Elevator(id, scheduler);
@@ -264,6 +304,13 @@ public class ElevatorManagerTest {
         long after = System.currentTimeMillis();
         assertTrue("时间戳应位于请求创建时刻附近", request.getTimestamp() >= before && request.getTimestamp() <= after);
         assertEquals(SpecialNeeds.NONE, request.getSpecialNeeds());
+    }
+
+    @Test(timeout = 5000)
+    public void testPassengerRequestSameFloorDirection() {
+        // 测试说明：验证起终点相同场景下的方向判定分支
+        PassengerRequest request = new PassengerRequest(4, 4, Priority.LOW, RequestType.DESTINATION_CONTROL);
+        assertEquals(Direction.DOWN, request.getDirection());
     }
 
     @Test(timeout = 5000)
@@ -468,6 +515,23 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testEventBusDoubleCheckInnerFalseBranch() throws Exception {
+        // 测试说明：并发覆盖事件总线单例的双重检查内层否定分支
+        setStaticField(EventBus.class, "instance", null);
+        EventBus prepared = new EventBus();
+        AtomicReference<EventBus> result = new AtomicReference<>();
+        Thread worker;
+        synchronized (EventBus.class) {
+            worker = new Thread(() -> result.set(EventBus.getInstance()));
+            worker.start();
+            setStaticField(EventBus.class, "instance", prepared);
+        }
+        worker.join();
+        assertSame(prepared, result.get());
+        setStaticField(EventBus.class, "instance", null);
+    }
+
+    @Test(timeout = 5000)
     public void testNotificationServiceChannelFiltering() throws Exception {
         // 测试说明：验证通知服务仅调用支持的通道，确保过滤逻辑准确
         NotificationService service = new NotificationService();
@@ -540,6 +604,38 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testSmsChannelSupportsMaintenance() {
+        // 测试说明：补充短信通道对维护通知的支持分支
+        NotificationService.SMSChannel smsChannel = new NotificationService.SMSChannel();
+        assertTrue(smsChannel.supports(NotificationService.NotificationType.MAINTENANCE));
+    }
+
+    @Test(timeout = 5000)
+    public void testEmailChannelSupportsAll() {
+        // 测试说明：验证邮件通道恒定支持所有类型
+        NotificationService.EmailChannel emailChannel = new NotificationService.EmailChannel();
+        assertTrue(emailChannel.supports(NotificationService.NotificationType.INFORMATION));
+    }
+
+    @Test(timeout = 5000)
+    public void testNotificationServiceDoubleCheckInnerFalseBranch() throws Exception {
+        // 测试说明：并发覆盖通知服务单例的双重检查内层否定分支
+        setStaticField(NotificationService.class, "instance", null);
+        NotificationService prepared = new NotificationService();
+        AtomicReference<NotificationService> result = new AtomicReference<>();
+        Thread worker;
+        synchronized (NotificationService.class) {
+            worker = new Thread(() -> result.set(NotificationService.getInstance()));
+            worker.start();
+            setStaticField(NotificationService.class, "instance", prepared);
+        }
+        worker.join();
+        assertSame(prepared, result.get());
+        assertSame(prepared, NotificationService.getInstance());
+        setStaticField(NotificationService.class, "instance", null);
+    }
+
+    @Test(timeout = 5000)
     public void testMaintenanceManagerSchedulingAndRecords() throws Exception {
         // 测试说明：验证维护管理器的任务排队、事件响应和记录生成逻辑
         QuietMaintenanceManager manager = new QuietMaintenanceManager();
@@ -577,6 +673,25 @@ public class ElevatorManagerTest {
 
         shutdownExecutor(manager, "executorService");
         shutdownExecutor(managerSingleton, "executorService");
+    }
+
+    @Test(timeout = 7000)
+    public void testMaintenanceManagerProcessTasksBranches() throws Exception {
+        // 测试说明：验证维护任务线程对有无任务两种情况的处理路径
+        setStaticField(MaintenanceManager.class, "instance", null);
+        MaintenanceManager manager = MaintenanceManager.getInstance();
+        Thread.sleep(50);
+        MaintenanceManager.MaintenanceTask idleTask = new MaintenanceManager.MaintenanceTask(20, System.currentTimeMillis(), "空轮询");
+        @SuppressWarnings("unchecked")
+        Queue<MaintenanceManager.MaintenanceTask> queue = (Queue<MaintenanceManager.MaintenanceTask>) getFieldValue(manager, "taskQueue");
+        queue.add(idleTask);
+        manager.scheduleMaintenance(createElevator(21, 1, Direction.UP, ElevatorStatus.IDLE));
+        Thread.sleep(1200);
+        @SuppressWarnings("unchecked")
+        List<MaintenanceManager.MaintenanceRecord> records = (List<MaintenanceManager.MaintenanceRecord>) getFieldValue(manager, "maintenanceRecords");
+        assertTrue("应当产生至少一条维护记录", records.size() >= 1);
+        shutdownExecutor(manager, "executorService");
+        setStaticField(MaintenanceManager.class, "instance", null);
     }
 
     @Test(timeout = 5000)
@@ -866,6 +981,36 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testSchedulerDefaultSingletonCreation() throws Exception {
+        // 测试说明：验证无参单例的初始化分支
+        setStaticField(Scheduler.class, "instance", null);
+        Scheduler scheduler = Scheduler.getInstance();
+        assertNotNull(scheduler);
+        assertTrue(((List<?>) getFieldValue(scheduler, "elevatorList")).isEmpty());
+        setStaticField(Scheduler.class, "instance", null);
+    }
+
+    @Test(timeout = 5000)
+    public void testSchedulerDoubleCheckInnerFalseBranch() throws Exception {
+        // 测试说明：通过并发模拟覆盖双重检查的内层否定分支
+        setStaticField(Scheduler.class, "instance", null);
+        List<Elevator> elevatorList = new ArrayList<>();
+        DispatchStrategy strategy = (elevators, request) -> null;
+        Scheduler prepared = new Scheduler(elevatorList, 2, strategy);
+        AtomicReference<Scheduler> result = new AtomicReference<>();
+        Thread worker;
+        synchronized (Scheduler.class) {
+            worker = new Thread(() -> result.set(Scheduler.getInstance(elevatorList, 2, strategy)));
+            worker.start();
+            setStaticField(Scheduler.class, "instance", prepared);
+        }
+        worker.join();
+        assertSame(prepared, result.get());
+        assertSame(prepared, Scheduler.getInstance());
+        setStaticField(Scheduler.class, "instance", null);
+    }
+
+    @Test(timeout = 5000)
     public void testSchedulerUpdateIgnoresOtherEvents() {
         // 测试说明：验证update方法对非故障/紧急事件的忽略分支
         List<Elevator> elevatorList = new ArrayList<>();
@@ -925,6 +1070,17 @@ public class ElevatorManagerTest {
         shutdownExecutor(monitor, "executorService");
     }
 
+    @Test
+    public void testSecurityEventGetters() {
+        // 测试说明：验证安保事件对象的字段访问
+        Thread.interrupted();
+        long now = System.currentTimeMillis();
+        SecurityMonitor.SecurityEvent event = new SecurityMonitor.SecurityEvent("测试", now, "数据");
+        assertEquals("测试", event.getDescription());
+        assertEquals(now, event.getTimestamp());
+        assertEquals("数据", event.getData());
+    }
+
     @Test(timeout = 5000)
     public void testThreadPoolManagerTaskExecution() throws Exception {
         // 测试说明：验证线程池管理器提交任务与关闭流程，确保任务能被执行
@@ -946,6 +1102,44 @@ public class ElevatorManagerTest {
         manager.shutdown();
         assertTrue("关闭流程应被调用", executor.isShutdown());
         assertTrue("无法在限定时间内结束时应强制关闭", executor.isTerminated());
+    }
+
+    @Test(timeout = 5000)
+    public void testThreadPoolManagerInterruptedShutdown() throws Exception {
+        // 测试说明：验证等待终止被中断时的异常分支
+        ThreadPoolManager manager = ThreadPoolManager.getInstance();
+        InterruptingExecutor executor = new InterruptingExecutor();
+        Field field = findField(ThreadPoolManager.class, "executorService");
+        field.set(manager, executor);
+
+        AtomicBoolean interrupted = new AtomicBoolean();
+        Thread shutdownThread = new Thread(() -> {
+            manager.shutdown();
+            interrupted.set(Thread.currentThread().isInterrupted());
+        });
+        shutdownThread.start();
+        shutdownThread.join();
+        assertTrue(executor.isShutdown());
+        assertTrue(executor.isTerminated());
+        assertTrue(interrupted.get());
+    }
+
+    @Test(timeout = 5000)
+    public void testThreadPoolManagerDoubleCheckInnerFalseBranch() throws Exception {
+        // 测试说明：并发覆盖线程池单例的双重检查内层否定分支
+        setStaticField(ThreadPoolManager.class, "instance", null);
+        ThreadPoolManager prepared = new ThreadPoolManager();
+        AtomicReference<ThreadPoolManager> result = new AtomicReference<>();
+        Thread worker;
+        synchronized (ThreadPoolManager.class) {
+            worker = new Thread(() -> result.set(ThreadPoolManager.getInstance()));
+            worker.start();
+            setStaticField(ThreadPoolManager.class, "instance", prepared);
+        }
+        worker.join();
+        assertSame(prepared, result.get());
+        prepared.shutdown();
+        setStaticField(ThreadPoolManager.class, "instance", null);
     }
 
     @Test(timeout = 5000)

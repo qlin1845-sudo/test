@@ -13,7 +13,7 @@ public class ThreadPoolManager {
 <span class="fc" id="L13">    }</span>
 
     public static ThreadPoolManager getInstance() {
-<span class="pc bpc" id="L16" title="1 of 2 branches missed.">        if (instance == null) {</span>
+<span class="fc bfc" id="L16" title="All 2 branches covered.">        if (instance == null) {</span>
 <span class="fc" id="L17">            synchronized (ThreadPoolManager.class) {</span>
 <span class="pc bpc" id="L18" title="1 of 2 branches missed.">                if (instance == null) {</span>
 <span class="fc" id="L19">                    instance = new ThreadPoolManager();</span>
@@ -33,9 +33,9 @@ public class ThreadPoolManager {
 <span class="fc bfc" id="L33" title="All 2 branches covered.">            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {</span>
 <span class="fc" id="L34">                executorService.shutdownNow();</span>
             }
-<span class="nc" id="L36">        } catch (InterruptedException e) {</span>
-<span class="nc" id="L37">            executorService.shutdownNow();</span>
-<span class="nc" id="L38">            Thread.currentThread().interrupt();</span>
+<span class="fc" id="L36">        } catch (InterruptedException e) {</span>
+<span class="fc" id="L37">            executorService.shutdownNow();</span>
+<span class="fc" id="L38">            Thread.currentThread().interrupt();</span>
 <span class="fc" id="L39">        }</span>
 <span class="fc" id="L40">    }</span>
 }
