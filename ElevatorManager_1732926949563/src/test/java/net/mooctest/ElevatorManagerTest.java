@@ -42,6 +42,7 @@ public class ElevatorManagerTest {
         resetSingleton(SecurityMonitor.class);
         resetSingleton(SystemConfig.class);
         resetSingleton(ThreadPoolManager.class);
+        Thread.interrupted();
     }
 
     private void resetSingleton(Class<?> clazz) throws Exception {
@@ -1070,10 +1071,9 @@ public class ElevatorManagerTest {
         shutdownExecutor(monitor, "executorService");
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void testSecurityEventGetters() {
         // 测试说明：验证安保事件对象的字段访问
-        Thread.interrupted();
         long now = System.currentTimeMillis();
         SecurityMonitor.SecurityEvent event = new SecurityMonitor.SecurityEvent("测试", now, "数据");
         assertEquals("测试", event.getDescription());
