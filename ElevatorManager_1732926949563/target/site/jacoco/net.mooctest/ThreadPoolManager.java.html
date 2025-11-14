@@ -30,8 +30,8 @@ public class ThreadPoolManager {
     public void shutdown() {
 <span class="fc" id="L31">        executorService.shutdown();</span>
         try {
-<span class="pc bpc" id="L33" title="1 of 2 branches missed.">            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {</span>
-<span class="nc" id="L34">                executorService.shutdownNow();</span>
+<span class="fc bfc" id="L33" title="All 2 branches covered.">            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {</span>
+<span class="fc" id="L34">                executorService.shutdownNow();</span>
             }
 <span class="nc" id="L36">        } catch (InterruptedException e) {</span>
 <span class="nc" id="L37">            executorService.shutdownNow();</span>

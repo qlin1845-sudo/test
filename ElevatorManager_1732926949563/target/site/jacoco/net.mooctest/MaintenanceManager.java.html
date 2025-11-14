@@ -17,7 +17,7 @@ public class MaintenanceManager implements EventBus.EventListener {
 <span class="fc" id="L17">    }</span>
 
     public static MaintenanceManager getInstance() {
-<span class="pc bpc" id="L20" title="1 of 2 branches missed.">        if (instance == null) {</span>
+<span class="fc bfc" id="L20" title="All 2 branches covered.">        if (instance == null) {</span>
 <span class="fc" id="L21">            synchronized (MaintenanceManager.class) {</span>
 <span class="pc bpc" id="L22" title="1 of 2 branches missed.">                if (instance == null) {</span>
 <span class="fc" id="L23">                    instance = new MaintenanceManager();</span>

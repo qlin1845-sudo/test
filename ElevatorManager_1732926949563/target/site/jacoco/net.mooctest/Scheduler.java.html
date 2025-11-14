@@ -23,14 +23,14 @@ public class Scheduler implements Observer {
 <span class="fc" id="L23">    }</span>
 
     public static Scheduler getInstance(List&lt;Elevator&gt; elevatorList, int floorCount, DispatchStrategy strategy) {
-<span class="nc bnc" id="L26" title="All 2 branches missed.">        if (instance == null) {</span>
-<span class="nc" id="L27">            synchronized (Scheduler.class) {</span>
-<span class="nc bnc" id="L28" title="All 2 branches missed.">                if (instance == null) {</span>
-<span class="nc" id="L29">                    instance = new Scheduler(elevatorList, floorCount, strategy);</span>
+<span class="fc bfc" id="L26" title="All 2 branches covered.">        if (instance == null) {</span>
+<span class="fc" id="L27">            synchronized (Scheduler.class) {</span>
+<span class="pc bpc" id="L28" title="1 of 2 branches missed.">                if (instance == null) {</span>
+<span class="fc" id="L29">                    instance = new Scheduler(elevatorList, floorCount, strategy);</span>
                 }
-<span class="nc" id="L31">            }</span>
+<span class="fc" id="L31">            }</span>
         }
-<span class="nc" id="L33">        return instance;</span>
+<span class="fc" id="L33">        return instance;</span>
     }
 
     public static Scheduler getInstance() {
@@ -80,7 +80,7 @@ public class Scheduler implements Observer {
 <span class="fc" id="L80">        Event event = (Event) arg;</span>
 <span class="fc bfc" id="L81" title="All 2 branches covered.">        if (event.getType() == EventType.ELEVATOR_FAULT) {</span>
 <span class="fc" id="L82">            redistributeRequests((Elevator) o);</span>
-<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        } else if (event.getType() == EventType.EMERGENCY) {</span>
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        } else if (event.getType() == EventType.EMERGENCY) {</span>
 <span class="fc" id="L84">            executeEmergencyProtocol();</span>
         }
 <span class="fc" id="L86">    }</span>

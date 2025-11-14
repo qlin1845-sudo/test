@@ -36,7 +36,7 @@ public class AnalyticsEngine {
 
     public boolean isPeakHours() {
 <span class="fc" id="L38">        int totalWaitingPassengers = floorPassengerCounts.values().stream().mapToInt(Integer::intValue).sum();</span>
-<span class="pc bpc" id="L39" title="1 of 2 branches missed.">        return totalWaitingPassengers &gt; 50;</span>
+<span class="fc bfc" id="L39" title="All 2 branches covered.">        return totalWaitingPassengers &gt; 50;</span>
     }
 
     public Report generatePerformanceReport() {

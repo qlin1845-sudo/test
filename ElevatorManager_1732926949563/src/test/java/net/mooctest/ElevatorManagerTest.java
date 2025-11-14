@@ -3,6 +3,8 @@ package net.mooctest;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,6 +16,7 @@ import java.util.Map;
 import java.util.Observer;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -154,6 +157,44 @@ public class ElevatorManagerTest {
         }
     }
 
+    private static class ControlledExecutor extends AbstractExecutorService {
+        private boolean shutdownCalled;
+        private boolean shutdownNowCalled;
+
+        @Override
+        public void shutdown() {
+            shutdownCalled = true;
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdownNowCalled = true;
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return shutdownCalled;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return shutdownNowCalled;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) {
+            return false;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            if (command != null) {
+                command.run();
+            }
+        }
+    }
+
     private Elevator createElevator(int id, int floor, Direction direction, ElevatorStatus status) {
         Scheduler scheduler = new Scheduler(new ArrayList<>(), 20, (elevators, request) -> null);
         Elevator elevator = new Elevator(id, scheduler);
@@ -216,6 +257,16 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testPassengerRequestTimestampAndSpecialNeeds() {
+        // 测试说明：补充校验时间戳与特殊需求默认值
+        long before = System.currentTimeMillis();
+        PassengerRequest request = new PassengerRequest(2, 6, Priority.MEDIUM, RequestType.STANDARD);
+        long after = System.currentTimeMillis();
+        assertTrue("时间戳应位于请求创建时刻附近", request.getTimestamp() >= before && request.getTimestamp() <= after);
+        assertEquals(SpecialNeeds.NONE, request.getSpecialNeeds());
+    }
+
+    @Test(timeout = 5000)
     public void testFloorQueueOperations() {
         // 测试说明：验证楼层请求队列的入队和清空逻辑，确保线程安全的锁处理有效
         Floor floor = new Floor(3);
@@ -226,6 +277,17 @@ public class ElevatorManagerTest {
         assertEquals(1, fetched.size());
         assertEquals(request, fetched.get(0));
         assertTrue("取出后队列应清空", floor.getRequests(Direction.UP).isEmpty());
+    }
+
+    @Test(timeout = 5000)
+    public void testFloorDownDirectionQueue() {
+        // 测试说明：补充验证向下方向的队列处理
+        Floor floor = new Floor(6);
+        PassengerRequest request = new PassengerRequest(6, 2, Priority.LOW, RequestType.STANDARD);
+        floor.addRequest(request);
+        List<PassengerRequest> fetched = floor.getRequests(Direction.DOWN);
+        assertEquals(1, fetched.size());
+        assertEquals(Direction.DOWN, fetched.get(0).getDirection());
     }
 
     @Test(timeout = 5000)
@@ -308,6 +370,28 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testPredictiveSchedulingStrategyCandidateComparison() throws Exception {
+        // 测试说明：进一步验证预测策略对成本更高电梯的拒绝路径
+        PredictiveSchedulingStrategy strategy = new PredictiveSchedulingStrategy();
+        PassengerRequest request = new PassengerRequest(2, 8, Priority.MEDIUM, RequestType.STANDARD);
+
+        Elevator elevatorA = createElevator(20, 6, Direction.UP, ElevatorStatus.MOVING);
+        @SuppressWarnings("unchecked")
+        List<PassengerRequest> passengersA = (List<PassengerRequest>) getFieldValue(elevatorA, "passengerList");
+        passengersA.add(new PassengerRequest(1, 4, Priority.LOW, RequestType.STANDARD));
+
+        Elevator elevatorB = createElevator(21, 3, Direction.UP, ElevatorStatus.MOVING);
+        Elevator elevatorC = createElevator(22, 9, Direction.DOWN, ElevatorStatus.MOVING);
+
+        double costB = strategy.calculatePredictedCost(elevatorB, request);
+        Elevator chosen = strategy.selectElevator(Arrays.asList(elevatorA, elevatorB, elevatorC), request);
+        assertSame("最优电梯应为成本最低的候选", elevatorB, chosen);
+
+        double costC = strategy.calculatePredictedCost(elevatorC, request);
+        assertTrue("较差候选的成本应不低于最佳方案", costC >= costB);
+    }
+
+    @Test(timeout = 5000)
     public void testLogManagerRecordAndQuery() throws Exception {
         // 测试说明：验证日志记录与时间区间查询逻辑，确保过滤条件生效
         LogManager logManager = LogManager.getInstance();
@@ -327,6 +411,22 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testLogManagerQueryBoundaries() throws Exception {
+        // 测试说明：补充校验日志时间窗口过滤的上下边界分支
+        LogManager logManager = LogManager.getInstance();
+        assertSame(logManager, LogManager.getInstance());
+
+        logManager.recordEvent("SourceA", "Hit");
+        @SuppressWarnings("unchecked")
+        List<LogManager.SystemLog> logs = (List<LogManager.SystemLog>) getFieldValue(logManager, "logs");
+        LogManager.SystemLog last = logs.get(logs.size() - 1);
+
+        assertEquals(1, logManager.queryLogs("SourceA", last.getTimestamp() - 1, last.getTimestamp() + 1).size());
+        assertTrue(logManager.queryLogs("SourceA", last.getTimestamp() + 1, last.getTimestamp() + 10).isEmpty());
+        assertTrue(logManager.queryLogs("SourceA", last.getTimestamp() - 10, last.getTimestamp() - 1).isEmpty());
+    }
+
+    @Test(timeout = 5000)
     public void testAnalyticsEngineProcessing() throws Exception {
         // 测试说明：验证分析引擎的状态缓存、峰值判断和报表生成逻辑
         AnalyticsEngine engine = AnalyticsEngine.getInstance();
@@ -342,6 +442,15 @@ public class ElevatorManagerTest {
         AnalyticsEngine.Report performance = engine.generatePerformanceReport();
         assertEquals("System Performance Report", performance.getTitle());
         assertTrue(performance.getGeneratedTime() <= System.currentTimeMillis());
+    }
+
+    @Test(timeout = 5000)
+    public void testAnalyticsEngineOffPeak() {
+        // 测试说明：验证乘客总量低于阈值时的非高峰判断
+        AnalyticsEngine engine = AnalyticsEngine.getInstance();
+        engine.updateFloorPassengerCount(1, 10);
+        engine.updateFloorPassengerCount(2, 15);
+        assertFalse(engine.isPeakHours());
     }
 
     @Test(timeout = 5000)
@@ -406,6 +515,31 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testNotificationChannelsSend() {
+        // 测试说明：直接验证短信与邮件通道的发送输出
+        NotificationService.Notification notification = new NotificationService.Notification(
+                NotificationService.NotificationType.EMERGENCY,
+                "紧急通知",
+                Arrays.asList("user@example.com")
+        );
+        NotificationService.SMSChannel smsChannel = new NotificationService.SMSChannel();
+        NotificationService.EmailChannel emailChannel = new NotificationService.EmailChannel();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(output));
+        try {
+            smsChannel.send(notification);
+            emailChannel.send(notification);
+        } finally {
+            System.setOut(original);
+        }
+        String printed = output.toString();
+        assertTrue(printed.contains("SMS"));
+        assertTrue(printed.contains("email"));
+    }
+
+    @Test(timeout = 5000)
     public void testMaintenanceManagerSchedulingAndRecords() throws Exception {
         // 测试说明：验证维护管理器的任务排队、事件响应和记录生成逻辑
         QuietMaintenanceManager manager = new QuietMaintenanceManager();
@@ -437,6 +571,9 @@ public class ElevatorManagerTest {
 
         MaintenanceManager managerSingleton = MaintenanceManager.getInstance();
         assertNotNull(managerSingleton);
+        assertSame(managerSingleton, MaintenanceManager.getInstance());
+
+        Thread.sleep(20);
 
         shutdownExecutor(manager, "executorService");
         shutdownExecutor(managerSingleton, "executorService");
@@ -473,6 +610,15 @@ public class ElevatorManagerTest {
         assertEquals(1, elevator.getPassengerList().size());
         assertTrue(elevator.getDestinationSet().contains(3));
         assertEquals(70.0, elevator.getCurrentLoad(), 0.0001);
+
+        scheduler.setRequests(3, Direction.UP, Collections.emptyList());
+        elevator.move();
+        assertEquals(3, elevator.getCurrentFloor());
+        assertEquals(ElevatorStatus.IDLE, elevator.getStatus());
+
+        elevator.setStatus(ElevatorStatus.MOVING);
+        elevator.updateDirection();
+        assertEquals("无目标时应恢复空闲", ElevatorStatus.IDLE, elevator.getStatus());
     }
 
     @Test(timeout = 5000)
@@ -549,6 +695,28 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testElevatorUnloadPassengersAndDirectionReset() throws Exception {
+        // 测试说明：补充验证卸客与空目的地下的方向重置
+        StubScheduler scheduler = new StubScheduler();
+        Elevator elevator = new Elevator(14, scheduler);
+        elevator.setCurrentFloor(4);
+        @SuppressWarnings("unchecked")
+        List<PassengerRequest> passengerList = (List<PassengerRequest>) getFieldValue(elevator, "passengerList");
+        PassengerRequest stay = new PassengerRequest(4, 7, Priority.MEDIUM, RequestType.STANDARD);
+        PassengerRequest leave = new PassengerRequest(4, 4, Priority.LOW, RequestType.STANDARD);
+        passengerList.add(stay);
+        passengerList.add(leave);
+
+        elevator.unloadPassengers();
+        assertEquals("当前楼层乘客应被移除", 1, passengerList.size());
+        assertEquals(70.0, elevator.getCurrentLoad(), 0.0001);
+
+        elevator.setStatus(ElevatorStatus.MOVING);
+        elevator.updateDirection();
+        assertEquals("无目的地时应立即空闲", ElevatorStatus.IDLE, elevator.getStatus());
+    }
+
+    @Test(timeout = 5000)
     public void testElevatorMoveToFirstFloor() throws Exception {
         // 测试说明：验证紧急回到首层时的循环逻辑与能耗统计
         StubScheduler scheduler = new StubScheduler();
@@ -559,6 +727,49 @@ public class ElevatorManagerTest {
         assertEquals(1, elevator.getCurrentFloor());
         assertEquals(ElevatorStatus.IDLE, elevator.getStatus());
         assertEquals(1.0, elevator.getEnergyConsumption(), 0.0001);
+    }
+
+    @Test(timeout = 5000)
+    public void testElevatorRunLifecycleAndAccessors() throws Exception {
+        // 测试说明：验证运行循环及相关访问器的边界行为
+        StubScheduler scheduler = new StubScheduler();
+        Elevator elevator = new Elevator(17, scheduler);
+        Observer observer = (obs, arg) -> { };
+        elevator.addObserver(observer);
+        assertTrue(elevator.getObservers().contains(observer));
+
+        elevator.setMode(ElevatorMode.ENERGY_SAVING);
+        elevator.setEnergyConsumption(2.0);
+        assertEquals(ElevatorMode.ENERGY_SAVING, elevator.getMode());
+        assertEquals(2.0, elevator.getEnergyConsumption(), 0.0001);
+        assertNotNull(elevator.getLock());
+        assertNotNull(elevator.getCondition());
+        assertEquals(scheduler, elevator.getScheduler());
+
+        elevator.setCurrentFloor(1);
+        elevator.handleEmergency();
+        assertEquals(ElevatorStatus.EMERGENCY, elevator.getStatus());
+
+        Thread runThread = new Thread(elevator);
+        runThread.start();
+        Thread.sleep(100);
+        runThread.interrupt();
+        runThread.join();
+        assertEquals(ElevatorStatus.IDLE, elevator.getStatus());
+    }
+
+    @Test(timeout = 6000)
+    public void testElevatorMoveToFirstFloorDirectionUp() throws Exception {
+        // 测试说明：验证向上移动分支的紧急回程
+        StubScheduler scheduler = new StubScheduler();
+        Elevator elevator = new Elevator(18, scheduler);
+        elevator.setCurrentFloor(0);
+        elevator.setDirection(Direction.UP);
+        double beforeEnergy = elevator.getEnergyConsumption();
+        elevator.moveToFirstFloor();
+        assertEquals(1, elevator.getCurrentFloor());
+        assertTrue(elevator.getEnergyConsumption() >= beforeEnergy + 1.0 - 1e-6);
+        assertEquals(ElevatorStatus.IDLE, elevator.getStatus());
     }
 
     @Test(timeout = 5000)
@@ -642,6 +853,31 @@ public class ElevatorManagerTest {
     }
 
     @Test(timeout = 5000)
+    public void testSchedulerSingletonFactories() throws Exception {
+        // 测试说明：覆盖调度器双重检查锁定的创建与复用逻辑
+        List<Elevator> elevatorList = new ArrayList<>();
+        DispatchStrategy strategy = (elevators, request) -> null;
+        Scheduler created = Scheduler.getInstance(elevatorList, 3, strategy);
+        assertNotNull(created);
+        assertSame("重复调用应返回同一实例", created, Scheduler.getInstance(elevatorList, 3, strategy));
+
+        Scheduler defaultCreated = Scheduler.getInstance();
+        assertSame("无参工厂应返回当前单例", created, defaultCreated);
+    }
+
+    @Test(timeout = 5000)
+    public void testSchedulerUpdateIgnoresOtherEvents() {
+        // 测试说明：验证update方法对非故障/紧急事件的忽略分支
+        List<Elevator> elevatorList = new ArrayList<>();
+        Scheduler scheduler = new Scheduler(elevatorList, 4, (elevators, request) -> null);
+        TrackingElevator elevator = new TrackingElevator(31, scheduler);
+        elevatorList.add(elevator);
+
+        scheduler.update(elevator, new Event(EventType.CONFIG_UPDATED, null));
+        assertFalse("普通事件不应触发紧急处理", elevator.isEmergencyHandled());
+    }
+
+    @Test(timeout = 5000)
     public void testSecurityMonitorHandleEmergency() throws Exception {
         // 测试说明：验证安保监控在接收到紧急事件时的日志、通知及调度联动逻辑
         List<Elevator> elevatorList = new ArrayList<>();
@@ -697,6 +933,19 @@ public class ElevatorManagerTest {
         manager.submitTask(latch::countDown);
         assertTrue(latch.await(2, TimeUnit.SECONDS));
         manager.shutdown();
+    }
+
+    @Test(timeout = 5000)
+    public void testThreadPoolManagerForceShutdown() throws Exception {
+        // 测试说明：验证线程池在未及时结束时触发强制关闭的分支
+        ThreadPoolManager manager = ThreadPoolManager.getInstance();
+        ControlledExecutor executor = new ControlledExecutor();
+        Field field = findField(ThreadPoolManager.class, "executorService");
+        field.set(manager, executor);
+
+        manager.shutdown();
+        assertTrue("关闭流程应被调用", executor.isShutdown());
+        assertTrue("无法在限定时间内结束时应强制关闭", executor.isTerminated());
     }
 
     @Test(timeout = 5000)

@@ -37,8 +37,8 @@ public class LogManager {
     public List&lt;SystemLog&gt; queryLogs(String source, long startTime, long endTime) {
 <span class="fc" id="L38">        return logs.stream()</span>
 <span class="fc bfc" id="L39" title="All 2 branches covered.">                .filter(log -&gt; log.getSource().equals(source)</span>
-<span class="pc bpc" id="L40" title="1 of 2 branches missed.">                        &amp;&amp; log.getTimestamp() &gt;= startTime</span>
-<span class="pc bpc" id="L41" title="1 of 2 branches missed.">                        &amp;&amp; log.getTimestamp() &lt;= endTime)</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">                        &amp;&amp; log.getTimestamp() &gt;= startTime</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">                        &amp;&amp; log.getTimestamp() &lt;= endTime)</span>
 <span class="fc" id="L42">                .collect(Collectors.toList());</span>
     }
 

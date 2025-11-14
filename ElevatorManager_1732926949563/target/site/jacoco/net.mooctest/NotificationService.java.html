@@ -44,8 +44,8 @@ public class NotificationService {
 
         @Override
         public void send(Notification notification) {
-<span class="nc" id="L47">            System.out.println(&quot;Sending SMS notification: &quot; + notification.getMessage() + &quot; to &quot; + notification.getRecipients());</span>
-<span class="nc" id="L48">        }</span>
+<span class="fc" id="L47">            System.out.println(&quot;Sending SMS notification: &quot; + notification.getMessage() + &quot; to &quot; + notification.getRecipients());</span>
+<span class="fc" id="L48">        }</span>
     }
 
 <span class="fc" id="L51">    public static class EmailChannel implements NotificationChannel {</span>
@@ -56,8 +56,8 @@ public class NotificationService {
 
         @Override
         public void send(Notification notification) {
-<span class="nc" id="L59">            System.out.println(&quot;Sending email notification: &quot; + notification.getMessage() + &quot; to &quot; + notification.getRecipients());</span>
-<span class="nc" id="L60">        }</span>
+<span class="fc" id="L59">            System.out.println(&quot;Sending email notification: &quot; + notification.getMessage() + &quot; to &quot; + notification.getRecipients());</span>
+<span class="fc" id="L60">        }</span>
     }
 
 <span class="fc" id="L63">    public enum NotificationType {</span>
