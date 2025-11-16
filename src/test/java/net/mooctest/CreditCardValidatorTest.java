@@ -18,6 +18,13 @@ public class CreditCardValidatorTest {
         return builder.toString();
     }
 
+    @Test
+    public void testBuildNumberPaddingAndNonPadding() {
+        // 用例目的：验证辅助方法在不同长度下的行为，预期当长度不足时补零，长度充足时保持原样。
+        assertEquals("123450000", buildNumber("12345", 9));
+        assertEquals("123456", buildNumber("123456", 3));
+    }
+
     private static class StubCardValidator extends CreditCardValidator {
         private final boolean lengthResult;
         private final boolean iinResult;
@@ -202,6 +209,16 @@ public class CreditCardValidatorTest {
         assertFalse(validator.validate());
         assertEquals(1, validator.lengthCallCount);
         assertEquals(1, validator.iinCallCount);
+    }
+
+    @Test
+    public void testStubCardValidatorMultipleInvocations() {
+        // 用例目的：验证重复调用时计数累加行为，预期每次调用都会增加计数。
+        StubCardValidator validator = new StubCardValidator(true, true);
+        assertTrue(validator.validate());
+        assertTrue(validator.validate());
+        assertEquals(2, validator.lengthCallCount);
+        assertEquals(2, validator.iinCallCount);
     }
 
     @Test
