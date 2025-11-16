@@ -539,6 +539,16 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testVerveValidatorBoundaryValues() {
+        // 用例目的：验证Verve卡首段区间的边界值，预期下界506099与上界506198均被代码接受。
+        VerveValidator lowerBoundary = new VerveValidator(buildNumber("506099", 16));
+        assertTrue(lowerBoundary.checkIINRanges());
+
+        VerveValidator upperBoundary = new VerveValidator(buildNumber("506198", 16));
+        assertTrue(upperBoundary.checkIINRanges());
+    }
+
+    @Test
     public void testVisaElectronValidatorRanges() {
         // 用例目的：验证Visa Electron卡多个区间，预期4026、4508、4913均通过，其它失败。
         VisaElectronValidator firstRange = new VisaElectronValidator(buildNumber("4026", 16));
@@ -556,6 +566,26 @@ public class CreditCardValidatorTest {
 
         VisaElectronValidator invalid = new VisaElectronValidator(buildNumber("8888", 16));
         assertFalse(invalid.checkIINRanges());
+    }
+
+    @Test
+    public void testVisaElectronValidatorAdditionalRanges() {
+        // 用例目的：验证Visa Electron卡区间上界，预期4405、4844、4917均能匹配成功。
+        VisaElectronValidator range4405 = new VisaElectronValidator(buildNumber("4405", 16));
+        assertTrue(range4405.checkIINRanges());
+
+        VisaElectronValidator range4844 = new VisaElectronValidator(buildNumber("4844", 16));
+        assertTrue(range4844.checkIINRanges());
+
+        VisaElectronValidator range4917 = new VisaElectronValidator(buildNumber("4917", 16));
+        assertTrue(range4917.checkIINRanges());
+    }
+
+    @Test
+    public void testVisaElectronValidatorHighSpecPrefix() {
+        // 用例目的：验证实现对417500前缀的处理，预期因实现限制返回false便于捕获潜在缺陷。
+        VisaElectronValidator validator = new VisaElectronValidator(buildNumber("417500", 16));
+        assertFalse(validator.checkIINRanges());
     }
 
     @Test
@@ -578,5 +608,215 @@ public class CreditCardValidatorTest {
         // 用例目的：验证枚举类型的完整性，预期能够通过名称定位并包含MASTERCARD值。
         assertEquals(CreditCardType.VISA, CreditCardType.valueOf("VISA"));
         assertTrue(Arrays.asList(CreditCardType.values()).contains(CreditCardType.MASTERCARD));
+    }
+
+    @Test
+    public void testVisaValidatorLengthBoundaries() {
+        // 用例目的：验证Visa长度范围的边界，预期13位和19位通过，20位失败。
+        VisaValidator minLength = new VisaValidator(buildNumber("4", 13));
+        assertTrue(minLength.checkLength());
+
+        VisaValidator maxLength = new VisaValidator(buildNumber("4", 19));
+        assertTrue(maxLength.checkLength());
+
+        VisaValidator overLength = new VisaValidator(buildNumber("4", 20));
+        assertFalse(overLength.checkLength());
+    }
+
+    @Test
+    public void testAmericanExpressValidatorUpperBoundary() {
+        // 用例目的：验证美国运通IIN区间上界37的处理，预期37开头的15位号码成功。
+        AmericanExpressValidator upper = new AmericanExpressValidator(buildNumber("37", 15));
+        assertTrue(upper.checkIINRanges());
+    }
+
+    @Test
+    public void testMasterCardValidatorUpperBoundaries() {
+        // 用例目的：验证万事达两个区间的上界，预期55与272099均判断为合法。
+        MasterCardValidator upperFirstRange = new MasterCardValidator(buildNumber("55", 16));
+        assertTrue(upperFirstRange.checkIINRanges());
+
+        MasterCardValidator upperSecondRange = new MasterCardValidator(buildNumber("272099", 16));
+        assertTrue(upperSecondRange.checkIINRanges());
+    }
+
+    @Test
+    public void testDiscoverValidatorUpperBoundaries() {
+        // 用例目的：验证Discover多段区间的上界，预期622925与649均成功匹配。
+        DiscoverValidator sixDigitUpper = new DiscoverValidator(buildNumber("622925", 16));
+        assertTrue(sixDigitUpper.checkIINRanges());
+
+        DiscoverValidator threeDigitUpper = new DiscoverValidator(buildNumber("649", 16));
+        assertTrue(threeDigitUpper.checkIINRanges());
+    }
+
+    @Test
+    public void testChinaUnionPayValidatorLengthLimits() {
+        // 用例目的：验证银联卡长度上界，预期19位合法、20位非法。
+        ChinaUnionPayValidator nineteen = new ChinaUnionPayValidator(buildNumber("62", 19));
+        assertTrue(nineteen.checkLength());
+
+        ChinaUnionPayValidator twenty = new ChinaUnionPayValidator(buildNumber("62", 20));
+        assertFalse(twenty.checkLength());
+    }
+
+    @Test
+    public void testChinaTUnionValidatorLengthUpperFailure() {
+        // 用例目的：验证中国T-Union在超出19位时的处理，预期20位返回false。
+        ChinaTUnionValidator validator = new ChinaTUnionValidator(buildNumber("31", 20));
+        assertFalse(validator.checkLength());
+    }
+
+    @Test
+    public void testDankortValidatorUpperBoundary() {
+        // 用例目的：验证Dankort IIN上界5019的处理，预期认定为合法。
+        DankortValidator validator = new DankortValidator(buildNumber("5019", 16));
+        assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testDinersClubInternationalValidatorUpperBoundaries() {
+        // 用例目的：验证大莱国际区间上界305与39，预期均判定为合法。
+        DinersClubInternationalValidator threeHundreds = new DinersClubInternationalValidator(buildNumber("305", 16));
+        assertTrue(threeHundreds.checkIINRanges());
+
+        DinersClubInternationalValidator thirtyNine = new DinersClubInternationalValidator(buildNumber("39", 16));
+        assertTrue(thirtyNine.checkIINRanges());
+    }
+
+    @Test
+    public void testDinersClubValidatorUpperBoundary() {
+        // 用例目的：验证大莱卡普通版上界55的处理，预期合法。
+        DinersClubValidator validator = new DinersClubValidator(buildNumber("55", 16));
+        assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testInstaPaymenttValidatorUpperBoundary() {
+        // 用例目的：验证InstaPayment区间上界639的处理，预期合法。
+        InstaPaymenttValidator validator = new InstaPaymenttValidator(buildNumber("639", 16));
+        assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testInterPaymentValidatorLengthUpperBoundary() {
+        // 用例目的：验证InterPayment在19位时仍合法，20位则非法。
+        InterPaymentValidator nineteen = new InterPaymentValidator(buildNumber("636", 19));
+        assertTrue(nineteen.checkLength());
+
+        InterPaymentValidator twenty = new InterPaymentValidator(buildNumber("636", 20));
+        assertFalse(twenty.checkLength());
+    }
+
+    @Test
+    public void testJCBValidatorUpperBoundary() {
+        // 用例目的：验证JCB区间上界3589的处理，预期合法。
+        JCBValidator validator = new JCBValidator(buildNumber("3589", 16));
+        assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testLankaPayValidatorLengthFailure() {
+        // 用例目的：验证LankaPay长度不足时的处理，预期长度为15时失败。
+        LankaPayValidator validator = new LankaPayValidator(buildNumber("357111", 15));
+        assertFalse(validator.checkLength());
+    }
+
+    @Test
+    public void testMIRValidatorUpperBoundary() {
+        // 用例目的：验证MIR区间上界2204的处理，预期合法。
+        MIRValidator validator = new MIRValidator(buildNumber("2204", 16));
+        assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testMaestroValidatorLengthLimits() {
+        // 用例目的：验证Maestro长度上界，预期19位合法、20位非法。
+        MaestroValidator nineteen = new MaestroValidator(buildNumber("500000", 19));
+        assertTrue(nineteen.checkLength());
+
+        MaestroValidator twenty = new MaestroValidator(buildNumber("500000", 20));
+        assertFalse(twenty.checkLength());
+    }
+
+    @Test
+    public void testMaestroValidatorRangeUpperBoundaries() {
+        // 用例目的：验证Maestro三段区间的上界，预期509999、589999、699999均合法。
+        MaestroValidator firstUpper = new MaestroValidator(buildNumber("509999", 12));
+        assertTrue(firstUpper.checkIINRanges());
+
+        MaestroValidator secondUpper = new MaestroValidator(buildNumber("589999", 12));
+        assertTrue(secondUpper.checkIINRanges());
+
+        MaestroValidator thirdUpper = new MaestroValidator(buildNumber("699999", 12));
+        assertTrue(thirdUpper.checkIINRanges());
+    }
+
+    @Test
+    public void testMaestroUKValidatorLengthLimits() {
+        // 用例目的：验证Maestro UK长度上界，预期19位合法、20位非法。
+        MaestroUKValidator nineteen = new MaestroUKValidator(buildNumber("6759", 19));
+        assertTrue(nineteen.checkLength());
+
+        MaestroUKValidator twenty = new MaestroUKValidator(buildNumber("6759", 20));
+        assertFalse(twenty.checkLength());
+    }
+
+    @Test
+    public void testNPSPridnestrovieValidatorBoundaryValues() {
+        // 用例目的：验证NPS Pridnestrovie区间边界6054740与6054744，预期均合法。
+        NPS_PridnestrovieValidator lower = new NPS_PridnestrovieValidator(buildNumber("6054740", 16));
+        assertTrue(lower.checkIINRanges());
+
+        NPS_PridnestrovieValidator upper = new NPS_PridnestrovieValidator(buildNumber("6054744", 16));
+        assertTrue(upper.checkIINRanges());
+    }
+
+    @Test
+    public void testRuPayValidatorUpperBoundary() {
+        // 用例目的：验证RuPay四位区间上界6522的处理，预期合法。
+        RuPayValidator validator = new RuPayValidator(buildNumber("6522", 16));
+        assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testTroyValidatorUpperBoundary() {
+        // 用例目的：验证Troy区间上界979289的处理，预期合法。
+        TroyValidator validator = new TroyValidator(buildNumber("979289", 16));
+        assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testUATPValidatorLengthFailure() {
+        // 用例目的：验证UATP卡长度超过15位时返回false。
+        UATPValidator validator = new UATPValidator(buildNumber("000001", 16));
+        assertFalse(validator.checkLength());
+    }
+
+    @Test
+    public void testValidatorCheckCVVTooLong() {
+        // 用例目的：验证CVV长度大于4位时的处理，预期返回false。
+        Validator validator = new Validator("1234567890123456", "01/50", "12345");
+        assertFalse(validator.checkCVV());
+    }
+
+    @Test
+    public void testValidatorExpirationDateExactCurrentMonth() {
+        // 用例目的：验证到期日恰好等于当前年月时应判定为过期，预期返回false。
+        int currentYear = DateChecker.CURRENT_YEAR;
+        int currentMonth = DateChecker.CURRENT_MONTH;
+        String expiration = String.format("%02d/%02d", currentMonth, currentYear);
+        Validator validator = new Validator("79927398713", expiration, "123");
+        assertFalse(validator.checkExpirationDate());
+    }
+
+    @Test
+    public void testVisaElectronValidatorLengthUpperBoundary() {
+        // 用例目的：验证Visa Electron长度上限仍然有效，预期19位通过、20位失败。
+        VisaElectronValidator nineteen = new VisaElectronValidator(buildNumber("4026", 19));
+        assertTrue(nineteen.checkLength());
+
+        VisaElectronValidator twenty = new VisaElectronValidator(buildNumber("4026", 20));
+        assertFalse(twenty.checkLength());
     }
 }
