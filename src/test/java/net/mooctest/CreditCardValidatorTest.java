@@ -125,6 +125,14 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testLuhnValidatorValidateWrapper() {
+        // 用例目的：验证validate方法对算法结果的封装，预期合法返回true，非法返回false。
+        LuhnValidator validator = new LuhnValidator();
+        assertTrue(validator.validate("79927398713"));
+        assertFalse(validator.validate("79927398714"));
+    }
+
+    @Test
     public void testAbstractValidatorSuccessfulValidation() {
         // 用例目的：验证抽象验证器在双检查均成功时返回true，预期方法调用各一次且结果为真。
         StubCardValidator validator = new StubCardValidator(true, true);
@@ -232,6 +240,39 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testValidatorParsesExpirationFields() throws Exception {
+        // 用例目的：验证构造函数能够正确解析到期年月，预期字段值分别为11和28。
+        Validator validator = new Validator("79927398713", "11/28", "123");
+        java.lang.reflect.Field dateField = Validator.class.getDeclaredField("expirationDate");
+        dateField.setAccessible(true);
+        StringBuilder stored = (StringBuilder) dateField.get(validator);
+        assertEquals("1128", stored.toString());
+        java.lang.reflect.Field monthField = Validator.class.getDeclaredField("expirationMonth");
+        monthField.setAccessible(true);
+        java.lang.reflect.Field yearField = Validator.class.getDeclaredField("expirationYear");
+        yearField.setAccessible(true);
+        assertEquals(Integer.valueOf(11), (Integer) monthField.get(validator));
+        assertEquals(Integer.valueOf(28), (Integer) yearField.get(validator));
+    }
+
+    @Test
+    public void testValidatorResetExpirationFields() throws Exception {
+        // 用例目的：验证手动更新日期后重新计算月份和年份的逻辑，预期字段更新为12和25。
+        Validator validator = new Validator("79927398713", "01/20", "123");
+        java.lang.reflect.Field dateField = Validator.class.getDeclaredField("expirationDate");
+        dateField.setAccessible(true);
+        dateField.set(validator, new StringBuilder("1225"));
+        validator.setExpirationMonth();
+        validator.setExpirationYear();
+        java.lang.reflect.Field monthField = Validator.class.getDeclaredField("expirationMonth");
+        monthField.setAccessible(true);
+        java.lang.reflect.Field yearField = Validator.class.getDeclaredField("expirationYear");
+        yearField.setAccessible(true);
+        assertEquals(Integer.valueOf(12), (Integer) monthField.get(validator));
+        assertEquals(Integer.valueOf(25), (Integer) yearField.get(validator));
+    }
+
+    @Test
     public void testVisaValidatorLengthAndIIN() {
         // 用例目的：验证Visa卡长度与IIN判断逻辑，预期合法长度和IIN为真，非法为假。
         VisaValidator valid = new VisaValidator(buildNumber("4", 16));
@@ -293,6 +334,9 @@ public class CreditCardValidatorTest {
 
         DiscoverValidator wrongLength = new DiscoverValidator(buildNumber("6011", 15));
         assertFalse(wrongLength.checkLength());
+
+        DiscoverValidator tooLong = new DiscoverValidator(buildNumber("6011", 17));
+        assertFalse(tooLong.checkLength());
 
         DiscoverValidator invalid = new DiscoverValidator(buildNumber("6600", 16));
         assertFalse(invalid.checkIINRanges());
@@ -549,6 +593,13 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testVerveValidatorLengthTooLong() {
+        // 用例目的：验证Verve卡长度超过19位时的处理，预期20位号码无效。
+        VerveValidator validator = new VerveValidator(buildNumber("506100", 20));
+        assertFalse(validator.checkLength());
+    }
+
+    @Test
     public void testVisaElectronValidatorRanges() {
         // 用例目的：验证Visa Electron卡多个区间，预期4026、4508、4913均通过，其它失败。
         VisaElectronValidator firstRange = new VisaElectronValidator(buildNumber("4026", 16));
@@ -685,6 +736,13 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testDinersClubInternationalValidatorLengthTooLong() {
+        // 用例目的：验证大莱国际超过规定上限19位时的处理，预期20位长度无效。
+        DinersClubInternationalValidator validator = new DinersClubInternationalValidator(buildNumber("300", 20));
+        assertFalse(validator.checkLength());
+    }
+
+    @Test
     public void testDinersClubValidatorUpperBoundary() {
         // 用例目的：验证大莱卡普通版上界55的处理，预期合法。
         DinersClubValidator validator = new DinersClubValidator(buildNumber("55", 16));
@@ -696,6 +754,13 @@ public class CreditCardValidatorTest {
         // 用例目的：验证InstaPayment区间上界639的处理，预期合法。
         InstaPaymenttValidator validator = new InstaPaymenttValidator(buildNumber("639", 16));
         assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testInstaPaymenttValidatorLengthFailure() {
+        // 用例目的：验证InstaPayment长度不足时的处理，预期长度为15位时校验失败。
+        InstaPaymenttValidator validator = new InstaPaymenttValidator(buildNumber("637", 15));
+        assertFalse(validator.checkLength());
     }
 
     @Test
@@ -727,6 +792,13 @@ public class CreditCardValidatorTest {
         // 用例目的：验证MIR区间上界2204的处理，预期合法。
         MIRValidator validator = new MIRValidator(buildNumber("2204", 16));
         assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testMIRValidatorLengthFailure() {
+        // 用例目的：验证MIR卡长度不足时的处理，预期长度15位无法通过校验。
+        MIRValidator validator = new MIRValidator(buildNumber("2200", 15));
+        assertFalse(validator.checkLength());
     }
 
     @Test
@@ -773,6 +845,13 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testNPSPridnestrovieValidatorLengthFailure() {
+        // 用例目的：验证NPS Pridnestrovie长度不足时的处理，预期15位号码判定为非法。
+        NPS_PridnestrovieValidator validator = new NPS_PridnestrovieValidator(buildNumber("6054740", 15));
+        assertFalse(validator.checkLength());
+    }
+
+    @Test
     public void testRuPayValidatorUpperBoundary() {
         // 用例目的：验证RuPay四位区间上界6522的处理，预期合法。
         RuPayValidator validator = new RuPayValidator(buildNumber("6522", 16));
@@ -780,10 +859,24 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testRuPayValidatorLengthFailure() {
+        // 用例目的：验证RuPay长度不足时的处理，预期15位号码无效。
+        RuPayValidator validator = new RuPayValidator(buildNumber("60", 15));
+        assertFalse(validator.checkLength());
+    }
+
+    @Test
     public void testTroyValidatorUpperBoundary() {
         // 用例目的：验证Troy区间上界979289的处理，预期合法。
         TroyValidator validator = new TroyValidator(buildNumber("979289", 16));
         assertTrue(validator.checkIINRanges());
+    }
+
+    @Test
+    public void testTroyValidatorLengthFailure() {
+        // 用例目的：验证Troy卡长度不足时的处理，预期15位号码不能通过校验。
+        TroyValidator validator = new TroyValidator(buildNumber("979200", 15));
+        assertFalse(validator.checkLength());
     }
 
     @Test
