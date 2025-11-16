@@ -92,6 +92,57 @@ public class BudgetTest {
     }
 
     /**
+     * 用例目的：验证仅加入null条目时预算保持为空。
+     * 预期结果：totalCost/totalValue为0且列表为空。
+     */
+    @Test
+    public void testBudgetAddNullOnlyKeepsEmpty() {
+        Budget b = new Budget();
+        b.add(null);
+        assertTrue(b.getItems().isEmpty());
+        assertEquals(0.0, b.totalCost(), 0.0001);
+        assertEquals(0.0, b.totalValue(), 0.0001);
+    }
+
+    /**
+     * 用例目的：验证多条目累加后的总成本与总价值。
+     * 预期结果：totalCost与totalValue按逐项相加结果输出。
+     */
+    @Test
+    public void testBudgetTotalCostAndValueAccumulation() {
+        Budget b = new Budget();
+        b.add(new Budget.Item("A", 100.5, 0.3, "CAT"));
+        b.add(new Budget.Item("B", 200.0, 0.7, "CAT"));
+        assertEquals(300.5, b.totalCost(), 0.0001);
+        assertEquals(1.0, b.totalValue(), 0.0001);
+    }
+
+    /**
+     * 用例目的：验证setReserveRatio在边界值时的行为。
+     * 预期结果：设为0返回最低1000，设为0.5返回成本的一半。
+     */
+    @Test
+    public void testBudgetSetReserveRatioExactBounds() {
+        Budget b = new Budget();
+        b.add(new Budget.Item("X", 10000.0, 0.0, "CAT"));
+        b.setReserveRatio(0.0);
+        assertEquals(1000.0, b.requiredReserve(), 0.0001);
+        b.setReserveRatio(0.5);
+        assertEquals(5000.0, b.requiredReserve(), 0.0001);
+    }
+
+    /**
+     * 用例目的：验证totalCost与totalValue在没有条目时直接调用的返回值。
+     * 预期结果：均返回0。
+     */
+    @Test
+    public void testBudgetTotalsOnEmptyBudget() {
+        Budget fresh = new Budget();
+        assertEquals(0.0, fresh.totalCost(), 0.0001);
+        assertEquals(0.0, fresh.totalValue(), 0.0001);
+    }
+
+    /**
      * 用例目的：验证通胀率边界收敛逻辑（<-0.5 与 >1.0）。
      * 预期结果：通胀率被夹紧到[-0.5, 1.0]范围内。
      */
