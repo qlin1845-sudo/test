@@ -25,6 +25,12 @@ public class CreditCardValidatorTest {
         assertEquals("123456", buildNumber("123456", 3));
     }
 
+    @Test(expected = NegativeArraySizeException.class)
+    public void testBuildNumberNegativeLengthThrows() {
+        // 用例目的：验证辅助方法对非法长度的处理，预期抛出NegativeArraySizeException以覆盖异常路径。
+        buildNumber("123", -1);
+    }
+
     private static class StubCardValidator extends CreditCardValidator {
         private final boolean lengthResult;
         private final boolean iinResult;
@@ -79,6 +85,13 @@ public class CreditCardValidatorTest {
         assertTrue(numbers.isEmpty());
     }
 
+    @Test(expected = StringIndexOutOfBoundsException.class)
+    public void testCreditCardParserParseIINWithInsufficientDigits() {
+        // 用例目的：验证IIN解析在数据不足时的抛异常行为，预期触发StringIndexOutOfBoundsException。
+        List<Integer> numbers = CreditCardParser.parseNumber("12");
+        CreditCardParser.parseIIN(numbers, 3);
+    }
+
     @Test
     public void testDateParserRemoveSlashBranch() {
         // 用例目的：验证日期解析时能够去除斜杠并正确分割月份和年份，预期得到的数值分别为12和34。
@@ -103,6 +116,13 @@ public class CreditCardValidatorTest {
         StringBuilder builder = new StringBuilder("1/2/34");
         StringBuilder parsed = DateParser.parseDate(builder);
         assertEquals("12/34", parsed.toString());
+    }
+
+    @Test(expected = NumberFormatException.class)
+    public void testDateParserParseDateWithNonDigits() {
+        // 用例目的：验证日期分割在存在非法字符时的行为，预期抛出NumberFormatException。
+        StringBuilder builder = new StringBuilder("1A34");
+        DateParser.parseDate(builder, 0, 2);
     }
 
     @Test
@@ -173,6 +193,13 @@ public class CreditCardValidatorTest {
         // 用例目的：验证sumOfDigits在处理个位数时的分支逻辑，预期数值保持不变。
         LuhnValidator validator = new LuhnValidator();
         assertEquals(7, validator.sumOfDigits(7));
+    }
+
+    @Test(expected = NumberFormatException.class)
+    public void testLuhnValidatorAlgorithmRejectsNonDigits() {
+        // 用例目的：验证算法在包含非数字字符时的行为，预期抛出NumberFormatException。
+        LuhnValidator validator = new LuhnValidator();
+        validator.algorithmCheck("12A3");
     }
 
     @Test
