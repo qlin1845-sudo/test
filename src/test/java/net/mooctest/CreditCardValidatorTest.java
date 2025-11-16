@@ -59,6 +59,20 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testCreditCardParserHandlesAlphabeticDigit() {
+        // 用例目的：验证解析器能够识别字母字符转换成对应数值，预期A被识别为10。
+        List<Integer> numbers = CreditCardParser.parseNumber("1A");
+        assertEquals(Arrays.asList(1, 10), numbers);
+    }
+
+    @Test
+    public void testCreditCardParserHandlesEmptyInput() {
+        // 用例目的：验证解析器在空字符串输入时的表现，预期返回的集合为空避免越界。
+        List<Integer> numbers = CreditCardParser.parseNumber("");
+        assertTrue(numbers.isEmpty());
+    }
+
+    @Test
     public void testDateParserRemoveSlashBranch() {
         // 用例目的：验证日期解析时能够去除斜杠并正确分割月份和年份，预期得到的数值分别为12和34。
         StringBuilder builder = new StringBuilder("12/34");
@@ -74,6 +88,14 @@ public class CreditCardValidatorTest {
         StringBuilder builder = new StringBuilder("1124");
         StringBuilder parsed = DateParser.parseDate(builder);
         assertEquals("1124", parsed.toString());
+    }
+
+    @Test
+    public void testDateParserOnlyRemovesFirstSlash() {
+        // 用例目的：验证日期解析仅删除首个分隔符的逻辑，预期第二个斜杠保留以检测变异。
+        StringBuilder builder = new StringBuilder("1/2/34");
+        StringBuilder parsed = DateParser.parseDate(builder);
+        assertEquals("12/34", parsed.toString());
     }
 
     @Test
@@ -133,6 +155,20 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testLuhnValidatorSingleDigitCard() {
+        // 用例目的：验证极短卡号在算法中的表现，预期单个数字0仍被视为有效。
+        LuhnValidator validator = new LuhnValidator();
+        assertTrue(validator.validate("0"));
+    }
+
+    @Test
+    public void testLuhnValidatorSumOfDigitsSingleDigit() {
+        // 用例目的：验证sumOfDigits在处理个位数时的分支逻辑，预期数值保持不变。
+        LuhnValidator validator = new LuhnValidator();
+        assertEquals(7, validator.sumOfDigits(7));
+    }
+
+    @Test
     public void testAbstractValidatorSuccessfulValidation() {
         // 用例目的：验证抽象验证器在双检查均成功时返回true，预期方法调用各一次且结果为真。
         StubCardValidator validator = new StubCardValidator(true, true);
@@ -154,6 +190,15 @@ public class CreditCardValidatorTest {
     public void testAbstractValidatorIINFailure() {
         // 用例目的：验证IIN校验失败导致整体失败，预期结果为假且调用计数正确。
         StubCardValidator validator = new StubCardValidator(true, false);
+        assertFalse(validator.validate());
+        assertEquals(1, validator.lengthCallCount);
+        assertEquals(1, validator.iinCallCount);
+    }
+
+    @Test
+    public void testAbstractValidatorBothChecksFailure() {
+        // 用例目的：验证双重校验均失败时的返回值，预期validate结果为false并记录调用次数。
+        StubCardValidator validator = new StubCardValidator(false, false);
         assertFalse(validator.validate());
         assertEquals(1, validator.lengthCallCount);
         assertEquals(1, validator.iinCallCount);
@@ -200,6 +245,20 @@ public class CreditCardValidatorTest {
         // 用例目的：验证CVV长度非法时返回假，预期长度两位时检查失败。
         Validator validator = new Validator("1234567890123456", "01/50", "12");
         assertFalse(validator.checkCVV());
+    }
+
+    @Test
+    public void testValidatorCheckCVVZeroLength() {
+        // 用例目的：验证CVV为空字符串时的处理，预期返回false防止通过校验。
+        Validator validator = new Validator("1234567890123456", "01/50", "");
+        assertFalse(validator.checkCVV());
+    }
+
+    @Test
+    public void testValidatorValidateWithExpirationData() throws InvalidCardException {
+        // 用例目的：验证带有效期和CVV构造的校验流程，预期合法卡号仍能够通过Luhn校验。
+        Validator validator = new Validator("79927398713", "12/40", "999");
+        assertTrue(validator.validate());
     }
 
     @Test
@@ -600,6 +659,23 @@ public class CreditCardValidatorTest {
     }
 
     @Test
+    public void testMultipleValidatorsRejectImproperLengths() {
+        // 用例目的：批量验证各卡种在超长或过短场景下的长度判断，预期全部返回false。
+        assertFalse(new AmericanExpressValidator(buildNumber("34", 16)).checkLength());
+        assertFalse(new DankortValidator(buildNumber("4571", 17)).checkLength());
+        assertFalse(new DinersClubValidator(buildNumber("54", 17)).checkLength());
+        assertFalse(new InstaPaymenttValidator(buildNumber("637", 17)).checkLength());
+        assertFalse(new JCBValidator(buildNumber("3528", 17)).checkLength());
+        assertFalse(new LankaPayValidator(buildNumber("357111", 17)).checkLength());
+        assertFalse(new MIRValidator(buildNumber("2200", 17)).checkLength());
+        assertFalse(new NPS_PridnestrovieValidator(buildNumber("6054740", 17)).checkLength());
+        assertFalse(new RuPayValidator(buildNumber("60", 17)).checkLength());
+        assertFalse(new TroyValidator(buildNumber("979200", 17)).checkLength());
+        assertFalse(new VerveValidator(buildNumber("506100", 15)).checkLength());
+        assertFalse(new UATPValidator(buildNumber("000001", 14)).checkLength());
+    }
+
+    @Test
     public void testVisaElectronValidatorRanges() {
         // 用例目的：验证Visa Electron卡多个区间，预期4026、4508、4913均通过，其它失败。
         VisaElectronValidator firstRange = new VisaElectronValidator(buildNumber("4026", 16));
@@ -652,6 +728,12 @@ public class CreditCardValidatorTest {
     public void testTypeCheckerFallsBackToOther() {
         // 用例目的：验证类型识别器在无法匹配任何已知品牌时的兜底行为，预期返回OTHER。
         assertEquals(CreditCardType.OTHER, TypeChecker.checkType(buildNumber("70", 16)));
+    }
+
+    @Test
+    public void testTypeCheckerRecognizesExtendedMasterCardRange() {
+        // 用例目的：验证类型识别器能识别万事达新IIN段，预期222100开头仍识别为MasterCard。
+        assertEquals(CreditCardType.MASTERCARD, TypeChecker.checkType(buildNumber("222100", 16)));
     }
 
     @Test
