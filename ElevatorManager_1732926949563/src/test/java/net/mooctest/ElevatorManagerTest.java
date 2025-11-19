@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +59,12 @@ public class ElevatorManagerTest {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
         return (T) field.get(target);
+    }
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 
     private Elevator createElevator(int id) {
@@ -192,6 +199,52 @@ public class ElevatorManagerTest {
         @Override
         public void openDoor() {
             setStatus(ElevatorStatus.STOPPED);
+        }
+    }
+
+    private static class InterruptingExecutor extends AbstractExecutorService {
+        private boolean shutdownCalled;
+        private boolean shutdownNowCalled;
+        private boolean terminated;
+
+        @Override
+        public void shutdown() {
+            shutdownCalled = true;
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdownNowCalled = true;
+            terminated = true;
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return shutdownCalled;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return terminated;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            throw new InterruptedException("forced");
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            command.run();
+        }
+
+        boolean isShutdownCalled() {
+            return shutdownCalled;
+        }
+
+        boolean isShutdownNowCalled() {
+            return shutdownNowCalled;
         }
     }
 
@@ -540,6 +593,34 @@ public class ElevatorManagerTest {
     }
 
     @Test
+    public void testSchedulerObserverUpdateHandling() throws Exception {
+        // 本测试验证Scheduler作为观察者时对不同事件类型的分支响应，确保故障再分配与全局应急都能触发。
+        List<Elevator> pool = new ArrayList<>();
+        Scheduler scheduler = new Scheduler(pool, 6, new NearestElevatorStrategy());
+        Elevator elevator = new Elevator(88, scheduler);
+        pool.add(elevator);
+
+        PassengerRequest pending = new PassengerRequest(1, 4, Priority.MEDIUM, RequestType.STANDARD);
+        List<PassengerRequest> passengerList = accessPassengerList(elevator);
+        passengerList.add(pending);
+        elevator.getDestinationSet().add(pending.getDestinationFloor());
+
+        List<PassengerRequest> redistributed = new ArrayList<>();
+        scheduler.setDispatchStrategy((available, request) -> {
+            redistributed.add(request);
+            return null;
+        });
+        scheduler.update(elevator, new Event(EventType.ELEVATOR_FAULT, "故障"));
+        assertTrue(redistributed.contains(pending));
+        assertTrue(elevator.getPassengerList().isEmpty());
+
+        scheduler.setDispatchStrategy((available, request) -> elevator);
+        scheduler.update(elevator, new Event(EventType.EMERGENCY, "告警"));
+        assertEquals(ElevatorStatus.EMERGENCY, elevator.getStatus());
+        assertTrue(elevator.getDestinationSet().contains(1));
+    }
+
+    @Test
     public void testElevatorMovementAndDirection() throws Exception {
         // 本测试验证电梯移动时的方向推断与能耗计算，确保状态机行为正确。
         StubScheduler scheduler = buildStubScheduler();
@@ -587,6 +668,29 @@ public class ElevatorManagerTest {
         elevator.setStatus(ElevatorStatus.MOVING);
         elevator.updateDirection();
         assertEquals(ElevatorStatus.IDLE, elevator.getStatus());
+    }
+
+    @Test
+    public void testElevatorPassengerListIsCopy() throws Exception {
+        // 本测试验证getPassengerList返回的是快照，外部修改不会影响内部数据。
+        Elevator elevator = new Elevator(13, buildStubScheduler());
+        List<PassengerRequest> passengerList = accessPassengerList(elevator);
+        passengerList.add(new PassengerRequest(1, 4, Priority.LOW, RequestType.STANDARD));
+        List<PassengerRequest> snapshot = elevator.getPassengerList();
+        snapshot.clear();
+        assertEquals(1, elevator.getPassengerList().size());
+    }
+
+    @Test
+    public void testElevatorHandleEmergencyNotifiesObservers() {
+        // 本测试验证handleEmergency会清空任务并通知观察者，确保告警链完整。
+        Elevator elevator = new Elevator(14, buildStubScheduler());
+        RecordingObserver observer = new RecordingObserver();
+        elevator.addObserver(observer);
+        elevator.handleEmergency();
+        assertEquals(ElevatorStatus.EMERGENCY, elevator.getStatus());
+        assertEquals(ElevatorStatus.EMERGENCY, observer.getLastEvent());
+        assertTrue(elevator.getDestinationSet().contains(1));
     }
 
     @Test(timeout = 2000)
@@ -805,6 +909,28 @@ public class ElevatorManagerTest {
         manager.shutdown();
         ExecutorService executor = getField(manager, "executorService");
         assertTrue(executor.isShutdown());
+        resetSingleton(ThreadPoolManager.class, "instance");
+    }
+
+    @Test
+    public void testThreadPoolManagerShutdownInterruptedBranch() throws Exception {
+        // 本测试通过注入自定义执行器，验证shutdown在awaitTermination抛出异常时的降级路径。
+        ThreadPoolManager manager = ThreadPoolManager.getInstance();
+        ExecutorService original = getField(manager, "executorService");
+        original.shutdownNow();
+        InterruptingExecutor stub = new InterruptingExecutor();
+        setField(manager, "executorService", stub);
+
+        final boolean[] executed = {false};
+        manager.submitTask(() -> executed[0] = true);
+        assertTrue(executed[0]);
+        assertFalse(Thread.currentThread().isInterrupted());
+
+        manager.shutdown();
+        assertTrue(stub.isShutdownCalled());
+        assertTrue(stub.isShutdownNowCalled());
+        assertTrue(Thread.currentThread().isInterrupted());
+        Thread.interrupted();
         resetSingleton(ThreadPoolManager.class, "instance");
     }
 }
