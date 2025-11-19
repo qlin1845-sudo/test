@@ -365,6 +365,15 @@ public class ElevatorManagerTest {
     }
 
     @Test
+    public void testLogSystemLogAccessors() {
+        // 本测试验证日志实体的字段读写，确保审计信息可追踪。
+        LogManager.SystemLog log = new LogManager.SystemLog("Scheduler", "调度完成", 123L);
+        assertEquals("Scheduler", log.getSource());
+        assertEquals("调度完成", log.getMessage());
+        assertEquals(123L, log.getTimestamp());
+    }
+
+    @Test
     public void testAnalyticsEnginePeakAndReportGeneration() throws Exception {
         // 本测试验证分析引擎对状态报告与客流统计的处理逻辑，确保峰值判断准确。
         AnalyticsEngine analytics = AnalyticsEngine.getInstance();
@@ -424,6 +433,19 @@ public class ElevatorManagerTest {
         boolean emailSupports = channels.stream().anyMatch(channel -> channel.supports(NotificationService.NotificationType.SYSTEM_UPDATE));
         assertTrue(smsSupports);
         assertTrue(emailSupports);
+    }
+
+    @Test
+    public void testNotificationPayloadAccessors() {
+        // 本测试验证通知对象的字段封装，确保消息体、类型与收件人完整可读。
+        List<String> recipients = Arrays.asList("a@b.com", "c@d.com");
+        NotificationService.Notification notification = new NotificationService.Notification(
+                NotificationService.NotificationType.INFORMATION,
+                "系统升级",
+                recipients);
+        assertEquals(NotificationService.NotificationType.INFORMATION, notification.getType());
+        assertEquals("系统升级", notification.getMessage());
+        assertEquals(recipients, notification.getRecipients());
     }
 
     @Test
@@ -621,6 +643,19 @@ public class ElevatorManagerTest {
     }
 
     @Test
+    public void testSchedulerFloorQueueRetrieval() throws Exception {
+        // 本测试验证Scheduler的楼层队列读取逻辑，确保请求入队后能够被按方向提取并清空。
+        List<Elevator> pool = new ArrayList<>();
+        Scheduler scheduler = new Scheduler(pool, 6, new NearestElevatorStrategy());
+        PassengerRequest request = new PassengerRequest(2, 5, Priority.MEDIUM, RequestType.STANDARD);
+        scheduler.submitRequest(request);
+        List<PassengerRequest> fetched = scheduler.getRequestsAtFloor(2, Direction.UP);
+        assertEquals(1, fetched.size());
+        assertEquals(request, fetched.get(0));
+        assertTrue(scheduler.getRequestsAtFloor(2, Direction.UP).isEmpty());
+    }
+
+    @Test
     public void testElevatorMovementAndDirection() throws Exception {
         // 本测试验证电梯移动时的方向推断与能耗计算，确保状态机行为正确。
         StubScheduler scheduler = buildStubScheduler();
@@ -682,6 +717,20 @@ public class ElevatorManagerTest {
     }
 
     @Test
+    public void testElevatorUnloadPassengersAdjustLoad() throws Exception {
+        // 本测试验证卸客动作只移除到站乘客并重新计算载重。
+        Elevator elevator = new Elevator(13, buildStubScheduler());
+        elevator.setCurrentFloor(5);
+        List<PassengerRequest> passengerList = accessPassengerList(elevator);
+        passengerList.add(new PassengerRequest(1, 5, Priority.LOW, RequestType.STANDARD));
+        passengerList.add(new PassengerRequest(1, 6, Priority.LOW, RequestType.STANDARD));
+        elevator.setCurrentLoad(140);
+        elevator.unloadPassengers();
+        assertEquals(1, elevator.getPassengerList().size());
+        assertEquals(70, elevator.getCurrentLoad(), 0.01);
+    }
+
+    @Test
     public void testElevatorHandleEmergencyNotifiesObservers() {
         // 本测试验证handleEmergency会清空任务并通知观察者，确保告警链完整。
         Elevator elevator = new Elevator(14, buildStubScheduler());
@@ -736,6 +785,18 @@ public class ElevatorManagerTest {
             worker.interrupt();
         }
         assertTrue(elevator.isEmergencyInvoked());
+    }
+
+    @Test(timeout = 2000)
+    public void testElevatorRunLoopIdleInterrupt() throws Exception {
+        // 本测试验证线程在空闲等待期间被中断时能够安全退出循环，覆盖异常中断分支。
+        Elevator elevator = new Elevator(57, buildStubScheduler());
+        Thread worker = new Thread(elevator);
+        worker.start();
+        Thread.sleep(100);
+        worker.interrupt();
+        worker.join(1000);
+        assertFalse(worker.isAlive());
     }
 
     @Test(timeout = 5000)
@@ -847,6 +908,20 @@ public class ElevatorManagerTest {
     }
 
     @Test
+    public void testMaintenanceTaskAndRecordAccessors() {
+        // 本测试验证维保任务与记录实体的字段访问，确保维保元数据可靠。
+        MaintenanceManager.MaintenanceTask task = new MaintenanceManager.MaintenanceTask(77, 456L, "巡检");
+        assertEquals(77, task.getElevatorId());
+        assertEquals(456L, task.getScheduledTime());
+        assertEquals("巡检", task.getDescription());
+
+        MaintenanceManager.MaintenanceRecord record = new MaintenanceManager.MaintenanceRecord(78, 789L, "完成");
+        assertEquals(78, record.getElevatorId());
+        assertEquals(789L, record.getMaintenanceTime());
+        assertEquals("完成", record.getResult());
+    }
+
+    @Test
     public void testSecurityMonitorHandleEmergency() throws Exception {
         // 本测试验证安全监控在收到紧急事件时的日志、通知与调度联动。
         TrackingScheduler trackingScheduler = new TrackingScheduler();
@@ -896,6 +971,16 @@ public class ElevatorManagerTest {
         assertFalse(events.isEmpty());
         assertEquals("总控触发", events.get(events.size() - 1).getData());
         assertTrue(trackingScheduler.isEmergencyTriggered());
+    }
+
+    @Test
+    public void testSecurityEventAccessors() {
+        // 本测试验证安防事件实体的字段访问，确保告警记录可追踪。
+        long now = System.currentTimeMillis();
+        SecurityMonitor.SecurityEvent event = new SecurityMonitor.SecurityEvent("测试", now, "DATA");
+        assertEquals("测试", event.getDescription());
+        assertEquals(now, event.getTimestamp());
+        assertEquals("DATA", event.getData());
     }
 
     @Test
