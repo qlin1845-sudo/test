@@ -303,6 +303,15 @@ public class ElevatorManagerTest {
     }
 
     @Test
+    public void testLogManagerQueryNoResult() {
+        // 本测试验证查询时间窗口不命中时的返回结果，确保过滤条件完全生效。
+        LogManager logManager = LogManager.getInstance();
+        long futureStart = System.currentTimeMillis() + 10_000;
+        long futureEnd = futureStart + 1000;
+        assertTrue(logManager.queryLogs("不存在", futureStart, futureEnd).isEmpty());
+    }
+
+    @Test
     public void testAnalyticsEnginePeakAndReportGeneration() throws Exception {
         // 本测试验证分析引擎对状态报告与客流统计的处理逻辑，确保峰值判断准确。
         AnalyticsEngine analytics = AnalyticsEngine.getInstance();
@@ -388,6 +397,18 @@ public class ElevatorManagerTest {
 
         close.setDirection(Direction.DOWN);
         assertNull(strategy.selectElevator(pool, request));
+    }
+
+    @Test
+    public void testEnergySavingStrategyDistanceLimit() {
+        // 本测试验证在方向一致但距离过远时策略会放弃派单，确保节能阈值判断有效。
+        EnergySavingStrategy strategy = new EnergySavingStrategy();
+        Elevator farElevator = createElevator(9);
+        farElevator.setStatus(ElevatorStatus.MOVING);
+        farElevator.setDirection(Direction.UP);
+        farElevator.setCurrentFloor(15);
+        PassengerRequest request = new PassengerRequest(1, 6, Priority.LOW, RequestType.STANDARD);
+        assertNull(strategy.selectElevator(Collections.singletonList(farElevator), request));
     }
 
     @Test
@@ -544,6 +565,28 @@ public class ElevatorManagerTest {
         assertNotNull(elevator.getCondition());
         elevator.setMode(ElevatorMode.ENERGY_SAVING);
         assertEquals(ElevatorMode.ENERGY_SAVING, elevator.getMode());
+    }
+
+    @Test(timeout = 3000)
+    public void testElevatorMoveTriggersDoorAndIdle() throws Exception {
+        // 本测试验证电梯在抵达目的楼层时会自动开门并回到空闲状态。
+        StubScheduler scheduler = buildStubScheduler();
+        Elevator elevator = new Elevator(11, scheduler);
+        elevator.setCurrentFloor(1);
+        elevator.addDestination(2);
+        elevator.move();
+        assertEquals(2, elevator.getCurrentFloor());
+        assertFalse(elevator.getDestinationSet().contains(2));
+        assertEquals(ElevatorStatus.IDLE, elevator.getStatus());
+    }
+
+    @Test
+    public void testElevatorUpdateDirectionIdle() {
+        // 本测试验证目的地清空后updateDirection会强制切回空闲状态。
+        Elevator elevator = new Elevator(12, buildStubScheduler());
+        elevator.setStatus(ElevatorStatus.MOVING);
+        elevator.updateDirection();
+        assertEquals(ElevatorStatus.IDLE, elevator.getStatus());
     }
 
     @Test(timeout = 2000)
