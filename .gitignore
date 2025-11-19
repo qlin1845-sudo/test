@@ -1,0 +1,14 @@
+# Build outputs
+**/target/
+**/out/
+
+# IDE settings
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS junk
+.DS_Store
+Thumbs.db
