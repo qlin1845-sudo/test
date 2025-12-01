@@ -1,0 +1,13 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+PathFinding,net.mooctest,Point,3,18,0,0,1,3,1,3,1,3
+PathFinding,net.mooctest,Nodes,11,339,6,40,1,78,6,30,0,13
+PathFinding,net.mooctest,AStar,42,442,8,56,7,112,10,37,2,9
+PathFinding,net.mooctest,Grid,12,313,13,43,0,50,13,32,0,17
+PathFinding,net.mooctest,ThreadLocalAStar.new ThreadLocal() {...},0,7,0,0,0,2,0,2,0,2
+PathFinding,net.mooctest,ThreadLocalAStar,3,9,0,0,1,2,1,2,1,2
+PathFinding,net.mooctest,TooLongPathException,0,4,0,0,0,2,0,1,0,1
+PathFinding,net.mooctest,Reachability,53,446,17,83,6,85,13,47,1,9
+PathFinding,net.mooctest,Node,3,87,0,2,1,13,1,8,1,7
+PathFinding,net.mooctest,Path,11,113,5,13,1,25,5,13,0,9
+PathFinding,net.mooctest,Utils,3,46,1,11,1,11,2,9,1,4
+PathFinding,net.mooctest,Cost,3,12,0,0,1,1,1,1,1,1
