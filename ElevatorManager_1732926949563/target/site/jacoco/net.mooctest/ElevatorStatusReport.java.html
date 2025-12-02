@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ElevatorStatusReport.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">ElevatorManager</a> &gt; <a href="index.source.html" class="el_package">net.mooctest</a> &gt; <span class="el_source">ElevatorStatusReport.java</span></div><h1>ElevatorStatusReport.java</h1><pre class="source lang-java linenums">package net.mooctest;
+
+public class ElevatorStatusReport {
+    private final int elevatorId;
+    private final int currentFloor;
+    private final Direction direction;
+    private final ElevatorStatus status;
+    private final double speed;
+    private final double currentLoad;
+    private final int passengerCount;
+
+<span class="fc" id="L12">    public ElevatorStatusReport(int elevatorId, int currentFloor, Direction direction, ElevatorStatus status, double speed, double currentLoad, int passengerCount) {</span>
+<span class="fc" id="L13">        this.elevatorId = elevatorId;</span>
+<span class="fc" id="L14">        this.currentFloor = currentFloor;</span>
+<span class="fc" id="L15">        this.direction = direction;</span>
+<span class="fc" id="L16">        this.status = status;</span>
+<span class="fc" id="L17">        this.speed = speed;</span>
+<span class="fc" id="L18">        this.currentLoad = currentLoad;</span>
+<span class="fc" id="L19">        this.passengerCount = passengerCount;</span>
+<span class="fc" id="L20">    }</span>
+
+    public int getElevatorId() {
+<span class="fc" id="L23">        return elevatorId;</span>
+    }
+
+    public int getCurrentFloor() {
+<span class="fc" id="L27">        return currentFloor;</span>
+    }
+
+    public Direction getDirection() {
+<span class="fc" id="L31">        return direction;</span>
+    }
+
+    public ElevatorStatus getStatus() {
+<span class="fc" id="L35">        return status;</span>
+    }
+
+    public double getSpeed() {
+<span class="fc" id="L39">        return speed;</span>
+    }
+
+    public double getCurrentLoad() {
+<span class="fc" id="L43">        return currentLoad;</span>
+    }
+
+    public int getPassengerCount() {
+<span class="fc" id="L47">        return passengerCount;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L52">        return String.format(</span>
+                &quot;ElevatorStatusReport[elevatorId=%d, currentFloor=%d, direction=%s, status=%s, speed=%.2f, currentLoad=%.2f, passengerCount=%d]&quot;,
+<span class="fc" id="L54">                elevatorId, currentFloor, direction, status, speed, currentLoad, passengerCount</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
